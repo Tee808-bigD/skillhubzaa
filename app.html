@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="SkillHubZA secure service marketplace" />
+  <title>SkillHubZA App</title>
+  <link rel="stylesheet" href="assets/css/app.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="app.html" aria-label="SkillHubZA home"><span>S</span>SkillHubZA</a>
+    <nav class="nav" aria-label="Primary navigation">
+      <button data-view="feed" class="nav-link active">Feed</button>
+      <button data-view="services" class="nav-link">Services</button>
+      <button data-view="professionals" class="nav-link">Pros</button>
+      <button data-view="messages" class="nav-link">Messages</button>
+    </nav>
+    <button id="logoutButton" class="ghost hidden">Logout</button>
+  </header>
+
+  <main class="shell">
+    <section id="authView" class="auth-grid">
+      <div class="auth-copy">
+        <p class="eyebrow">Secure local marketplace</p>
+        <h1>Find trusted professionals and manage service work in one place.</h1>
+        <p>Real accounts, protected data, persistent posts, service listings, bookings, and direct messages.</p>
+      </div>
+      <div class="auth-card">
+        <div class="tabs" role="tablist">
+          <button id="loginTab" class="tab active" type="button">Login</button>
+          <button id="registerTab" class="tab" type="button">Register</button>
+        </div>
+        <form id="loginForm" class="stack">
+          <label>Email<input id="loginEmail" type="email" autocomplete="email" required /></label>
+          <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+          <button class="primary" type="submit">Login</button>
+        </form>
+        <form id="registerForm" class="stack hidden">
+          <label>Full name<input id="registerName" type="text" autocomplete="name" minlength="2" maxlength="120" required /></label>
+          <label>Email<input id="registerEmail" type="email" autocomplete="email" required /></label>
+          <label>Account type
+            <select id="registerType">
+              <option value="client">Client</option>
+              <option value="professional">Professional</option>
+            </select>
+          </label>
+          <label>Password<input id="registerPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <button class="primary" type="submit">Create account</button>
+        </form>
+        <p id="authMessage" class="message" role="status"></p>
+      </div>
+    </section>
+
+    <section id="appView" class="hidden">
+      <div class="grid">
+        <aside class="panel profile-panel">
+          <img id="profileAvatar" class="avatar" alt="" />
+          <h2 id="profileName"></h2>
+          <p id="profileMeta"></p>
+          <form id="profileForm" class="stack compact">
+            <label>Skill<input id="profileSkill" maxlength="120" /></label>
+            <label>Location<input id="profileLocation" maxlength="120" /></label>
+            <label>Bio<textarea id="profileBio" maxlength="500"></textarea></label>
+            <button class="secondary" type="submit">Save profile</button>
+          </form>
+        </aside>
+
+        <section class="content">
+          <div id="feedView" class="view active-view">
+            <form id="postForm" class="composer">
+              <textarea id="postBody" placeholder="Share an update, request, or project..." maxlength="2000" required></textarea>
+              <button class="primary" type="submit">Post</button>
+            </form>
+            <div id="postsList" class="list"></div>
+          </div>
+
+          <div id="servicesView" class="view">
+            <form id="serviceForm" class="panel stack">
+              <h2>Create service</h2>
+              <label>Title<input id="serviceTitle" maxlength="140" required /></label>
+              <label>Category<input id="serviceCategory" maxlength="80" required /></label>
+              <label>Location<input id="serviceLocation" maxlength="120" /></label>
+              <label>Price in cents<input id="servicePrice" type="number" min="0" step="100" /></label>
+              <label>Description<textarea id="serviceDescription" maxlength="1200" required></textarea></label>
+              <button class="primary" type="submit">Publish service</button>
+            </form>
+            <div id="servicesList" class="list"></div>
+          </div>
+
+          <div id="professionalsView" class="view">
+            <input id="professionalSearch" class="search" placeholder="Search by name, skill, or location" />
+            <div id="professionalsList" class="list"></div>
+          </div>
+
+          <div id="messagesView" class="view">
+            <form id="messageForm" class="panel stack">
+              <h2>Send message</h2>
+              <label>Recipient user ID<input id="messageRecipient" required /></label>
+              <label>Message<textarea id="messageBody" maxlength="2000" required></textarea></label>
+              <button class="primary" type="submit">Send</button>
+            </form>
+            <div id="messagesList" class="list"></div>
+          </div>
+        </section>
+      </div>
+      <p id="appMessage" class="message" role="status"></p>
+    </section>
+  </main>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
