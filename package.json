@@ -1,0 +1,21 @@
+{
+  "name": "skillhubzaa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SkillHubZA full-stack marketplace app",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "node scripts/validate-env.js",
+    "lint": "node scripts/validate-env.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.36.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
