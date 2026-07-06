@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connections - SkillHub</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/friends.css">
+</head>
+<body>
+  <header>
+    <!-- Same header as before -->
+  </header>
+
+  <main class="container">
+    <div class="friends-container">
+      <div class="friends-header">
+        <h1>Connections</h1>
+        <div class="friends-tabs">
+          <button class="tab-btn active" data-tab="connections">My Connections</button>
+          <button class="tab-btn" data-tab="requests">Requests <span class="badge" id="requestsBadge">3</span></button>
+          <button class="tab-btn" data-tab="suggestions">Suggestions</button>
+        </div>
+      </div>
+      
+      <div class="tab-content active" id="connectionsTab">
+        <div class="search-box">
+          <input type="text" placeholder="Search connections..." id="searchConnections">
+          <i class="fas fa-search"></i>
+        </div>
+        <div class="connections-list" id="connectionsList">
+          <!-- Connections will be loaded here -->
+        </div>
+      </div>
+      
+      <div class="tab-content" id="requestsTab">
+        <div class="requests-list" id="requestsList">
+          <!-- Friend requests will be loaded here -->
+        </div>
+      </div>
+      
+      <div class="tab-content" id="suggestionsTab">
+        <div class="suggestions-list" id="suggestionsList">
+          <!-- Suggestions will be loaded here -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/friends.js"></script>
+</body>
+</html>

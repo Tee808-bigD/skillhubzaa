@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Services — SkillHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root{--primary:#e63946;--secondary:#2b2d42;--muted:#6c757d;--max:1100px}
+    *{box-sizing:border-box}
+    body{font-family:Inter,Arial,sans-serif;margin:0;background:#fff;color:#111}
+    .container{max-width:var(--max);margin:0 auto;padding:1rem}
+    header{background:#f8f9fa;box-shadow:0 2px 6px rgba(0,0,0,0.04)}
+    .nav{display:flex;align-items:center;justify-content:space-between;padding:.9rem 0}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;max-width:var(--max);margin-top:1rem}
+    .card{background:#fff;padding:1.2rem;border-radius:10px;border:1px solid rgba(0,0,0,0.04);text-align:left}
+    .icon{display:inline-flex;width:56px;height:56px;border-radius:10px;background:rgba(230,57,70,0.08);align-items:center;justify-content:center;margin-right:.8rem;color:var(--primary)}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand"><div class="logo" style="background:var(--primary);color:#fff;padding:.45rem .6rem;border-radius:8px">S</div>SkillHub</div>
+      <div><a href="index.html" style="font-weight:700;color:var(--primary)">Home</a></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2 style="margin-top:1rem">Services</h2>
+    <p class="muted">Browse by category</p>
+
+    <div class="grid">
+      <div class="card"><div style="display:flex;align-items:center"><div class="icon"><i class="fas fa-paint-roller"></i></div><div><h3>Painting</h3><p class="muted">Interior & exterior painting.</p></div></div><div style="margin-top:.6rem"><a href="profile.html" class="btn" style="padding:.4rem .6rem;border-radius:8px;border:1px solid #eee">View Professionals</a></div></div>
+
+      <div class="card"><div style="display:flex;align-items:center"><div class="icon"><i class="fas fa-tools"></i></div><div><h3>Plumbing</h3><p class="muted">Installation, repair & maintenance.</p></div></div><div style="margin-top:.6rem"><a href="profile.html" class="btn" style="padding:.4rem .6rem;border-radius:8px;border:1px solid #eee">View Professionals</a></div></div>
+
+      <div class="card"><div style="display:flex;align-items:center"><div class="icon"><i class="fas fa-hammer"></i></div><div><h3>Carpentry</h3><p class="muted">Custom woodwork and furniture.</p></div></div><div style="margin-top:.6rem"><a href="profile.html" class="btn" style="padding:.4rem .6rem;border-radius:8px;border:1px solid #eee">View Professionals</a></div></div>
+
+      <div class="card"><div style="display:flex;align-items:center"><div class="icon"><i class="fas fa-bolt"></i></div><div><h3>Electrical</h3><p class="muted">Certified electricians & wiring.</p></div></div><div style="margin-top:.6rem"><a href="profile.html" class="btn" style="padding:.4rem .6rem;border-radius:8px;border:1px solid #eee">View Professionals</a></div></div>
+    </div>
+  </main>
+
+  <footer style="background:#f8f9fa;padding:1.2rem;text-align:center;margin-top:1.4rem;color:var(--muted)">&copy; 2023 SkillHub</footer>
+</body>
+</html>

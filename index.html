@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="SkillHub connects skilled professionals with clients." />
+  <title>SkillHub — Connect with Local Professionals</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <style>
+    :root {
+      --primary: #e63946;
+      --primary-dark: #c1121f;
+      --secondary: #2b2d42;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --text: #222;
+      --muted: #6c757d;
+      --light-gray: #e9ecef;
+      --white: #ffffff;
+      --max-width: 1200px;
+      --border-radius: 8px;
+      --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background-color: var(--white);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    a:hover {
+      color: var(--primary);
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .container {
+      width: 100%;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+      color: var(--secondary);
+    }
+
+    h1 { font-size: 2.5rem; }
+    h2 { font-size: 2rem; }
+    h3 { font-size: 1.75rem; }
+
+    p {
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    /* Header Styles */
+    header {
+      background-color: var(--white);
+      box-shadow: var(--box-shadow);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      padding: 0.5rem 0;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+
+    .brand .logo {
+      background: var(--primary);
+      color: var(--white);
+      padding: 0.5rem 0.7rem;
+      border-radius: var(--border-radius);
+      font-weight: 800;
+    }
+
+    nav ul {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    nav a {
+      font-weight: 600;
+      padding: 0.5rem 0;
+      position: relative;
+    }
+
+    nav a:hover {
+      color: var(--primary);
+    }
+
+    .auth {
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+    }
+
+    /* Button Styles */
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.2rem;
+      border-radius: var(--border-radius);
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: var(--white);
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+      border-color: var(--primary-dark);
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--primary);
+      color: var(--white);
+    }
+
+    /* Hero Section */
+    .hero {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      color: var(--secondary);
+      padding: 6rem 1rem;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Auth Container Styles */
+    .auth-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .auth-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(230, 57, 70, 0.1);
+      animation: float 15s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0) translateX(0);
+      }
+      25% {
+        transform: translateY(-20px) translateX(10px);
+      }
+      50% {
+        transform: translateY(0) translateX(20px);
+      }
+      75% {
+        transform: translateY(20px) translateX(10px);
+      }
+    }
+
+    /* Auth Panel Styles */
+    .auth-panel-container {
+      background: rgba(255,255,255,0.95);
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      max-width: 400px;
+      margin: 2rem auto;
+      box-shadow: var(--box-shadow);
+      position: relative;
+      z-index: 1;
+      animation: fadeInUp 0.5s ease-out;
+    }
+
+    .welcome-message {
+      text-align: center;
+      margin-bottom: 2rem;
+      animation: fadeIn 1s ease-out;
+    }
+
+    .welcome-message h1 {
+      color: var(--secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .welcome-message p {
+      color: var(--muted);
+    }
+
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .auth-tab {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted);
+      flex: 1;
+      text-align: center;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .auth-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .auth-form {
+      display: none;
+    }
+
+    .auth-form.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--light-gray);
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 1rem 0;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: var(--muted);
+    }
+
+    .auth-footer a {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Animation */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-delay-1 {
+      animation-delay: 0.2s;
+    }
+
+    .animate-delay-2 {
+      animation-delay: 0.4s;
+    }
+
+    /* Error message */
+    .error-message {
+      color: var(--primary);
+      background-color: rgba(230, 57, 70, 0.1);
+      padding: 0.75rem;
+      border-radius: var(--border-radius);
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    /* Responsive Styles */
+    @media (max-width: 768px) {
+      .auth-panel-container {
+        padding: 1.5rem;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+
+      .nav {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem 0;
+      }
+
+      nav ul {
+        gap: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="container nav">
+      <div class="brand"><div class="logo">S</div>SkillHub</div>
+      <nav>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="services.html">Services</a></li>
+          <li><a href="#" id="professionalsLink">Professionals</a></li>
+        </ul>
+      </nav>
+      <div class="auth">
+        <button class="btn btn-outline" id="showLogin">Login</button>
+        <button class="btn btn-primary" id="showRegister">Register</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section with Auth Panel -->
+  <section class="hero">
+    <div class="auth-background">
+      <div class="bubble" style="width: 100px; height: 100px; top: 20%; left: 10%;"></div>
+      <div class="bubble" style="width: 150px; height: 150px; top: 60%; left: 80%; animation-delay: 2s;"></div>
+      <div class="bubble" style="width: 200px; height: 200px; top: 30%; left: 50%; animation-delay: 4s;"></div>
+      <div class="bubble" style="width: 80px; height: 80px; top: 70%; left: 20%; animation-delay: 6s;"></div>
+      <div class="bubble" style="width: 120px; height: 120px; top: 10%; left: 70%; animation-delay: 8s;"></div>
+    </div>
+
+    <div class="container">
+      <div class="welcome-message">
+        <h1>Connect with Local Professionals</h1>
+        <p>Find trusted service providers or showcase your skills to potential clients in your community.</p>
+      </div>
+      
+      <!-- Auth Panel Container -->
+      <div class="auth-panel-container fade-in">
+        <div class="auth-tabs">
+          <div class="auth-tab active" id="loginTab">Login</div>
+          <div class="auth-tab" id="registerTab">Register</div>
+        </div>
+        
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form active">
+          <div class="error-message" id="loginError"></div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" class="form-control" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="Your password" required>
+          </div>
+          <div class="form-options">
+            <div>
+              <input type="checkbox" id="remember">
+              <label for="remember">Remember me</label>
+            </div>
+            <a href="#" style="color: var(--primary)">Forgot password?</a>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+        </form>
+        
+        <!-- Registration Form -->
+        <form id="registerForm" class="auth-form">
+          <div class="error-message" id="registerError"></div>
+          <div class="form-group">
+            <label for="regName">Full Name</label>
+            <input type="text" id="regName" class="form-control" placeholder="Your full name" required>
+          </div>
+          <div class="form-group">
+            <label for="regEmail">Email</label>
+            <input type="email" id="regEmail" class="form-control" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="regPassword">Password</label>
+            <input type="password" id="regPassword" class="form-control" placeholder="Create a password" required>
+          </div>
+          <div class="form-group">
+            <label for="regConfirm">Confirm Password</label>
+            <input type="password" id="regConfirm" class="form-control" placeholder="Confirm password" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+        </form>
+        
+        <div class="auth-footer" id="authFooter">
+          Don't have an account? <a href="#" id="switchToRegister">Register</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Sample user database (in a real app, this would be server-side)
+      const userDatabase = [
+        {
+          email: "professional@example.com",
+          password: "skillhub123",
+          name: "John Professional",
+          avatar: "https://i.pravatar.cc/150?u=professional@example.com",
+          type: "professional"
+        }
+      ];
+
+      // Get elements
+      const loginTab = document.getElementById('loginTab');
+      const registerTab = document.getElementById('registerTab');
+      const loginForm = document.getElementById('loginForm');
+      const registerForm = document.getElementById('registerForm');
+      const authFooter = document.getElementById('authFooter');
+      const loginError = document.getElementById('loginError');
+      const registerError = document.getElementById('registerError');
+      const professionalsLink = document.getElementById('professionalsLink');
+      
+      // Create additional bubbles dynamically
+      const background = document.querySelector('.auth-background');
+      for (let i = 0; i < 8; i++) {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        const size = Math.random() * 100 + 50;
+        bubble.style.width = `${size}px`;
+        bubble.style.height = `${size}px`;
+        bubble.style.top = `${Math.random() * 100}%`;
+        bubble.style.left = `${Math.random() * 100}%`;
+        bubble.style.animationDelay = `${Math.random() * 10}s`;
+        bubble.style.opacity = Math.random() * 0.3 + 0.1;
+        background.appendChild(bubble);
+      }
+
+      // Check if user is already logged in
+      if (localStorage.getItem('skillhub_user')) {
+        redirectToFeed();
+      }
+
+      // Professionals link click handler
+      professionalsLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (localStorage.getItem('skillhub_user')) {
+          window.location.href = 'feed.html';
+        } else {
+          showLogin();
+          // Scroll to login form
+          document.querySelector('.auth-panel-container').scrollIntoView({
+            behavior: 'smooth'
+          });
+          // Show message
+          loginError.textContent = 'Please login to access professionals feed';
+          loginError.style.display = 'block';
+        }
+      });
+
+      // Login form submission
+      loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        // Validate inputs
+        if (!email || !password) {
+          showError(loginError, 'Please enter both email and password');
+          return;
+        }
+        
+        // Check credentials
+        const user = authenticateUser(email, password);
+        
+        if (user) {
+          // Successful login
+          saveUserSession(user);
+          redirectToFeed();
+        } else {
+          showError(loginError, 'Invalid email or password');
+        }
+      });
+      
+      // Registration form submission
+      registerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('regName').value;
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        const confirm = document.getElementById('regConfirm').value;
+        
+        // Validate inputs
+        if (!name || !email || !password || !confirm) {
+          showError(registerError, 'Please fill in all fields');
+          return;
+        }
+        
+        if (password !== confirm) {
+          showError(registerError, 'Passwords do not match');
+          return;
+        }
+        
+        if (password.length < 6) {
+          showError(registerError, 'Password must be at least 6 characters');
+          return;
+        }
+        
+        // Check if email already exists
+        if (userExists(email)) {
+          showError(registerError, 'Email already registered');
+          return;
+        }
+        
+        // Register new user
+        const newUser = registerNewUser(name, email, password);
+        saveUserSession(newUser);
+        redirectToFeed();
+      });
+      
+      // Helper functions
+      function authenticateUser(email, password) {
+        return userDatabase.find(user => 
+          user.email === email && user.password === password
+        );
+      }
+      
+      function userExists(email) {
+        return userDatabase.some(user => user.email === email);
+      }
+      
+      function registerNewUser(name, email, password) {
+        const newUser = {
+          name: name,
+          email: email,
+          password: password, // Note: In production, you would hash this
+          avatar: `https://i.pravatar.cc/150?u=${email}`,
+          type: "professional" // Default to professional account
+        };
+        
+        // In a real app, this would be a server call
+        userDatabase.push(newUser);
+        return newUser;
+      }
+      
+      function saveUserSession(user) {
+        // Store only necessary data in localStorage
+        localStorage.setItem('skillhub_user', JSON.stringify({
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          type: user.type
+        }));
+      }
+      
+      function redirectToFeed() {
+        window.location.href = 'feed.html';
+      }
+      
+      function showError(element, message) {
+        element.textContent = message;
+        element.style.display = 'block';
+      }
+      
+      // Tab switching functionality
+      function showRegister() {
+        loginTab.classList.remove('active');
+        registerTab.classList.add('active');
+        loginForm.classList.remove('active');
+        registerForm.classList.add('active');
+        authFooter.innerHTML = 'Already have an account? <a href="#" id="switchToLogin">Login</a>';
+        loginError.style.display = 'none';
+        
+        document.getElementById('switchToLogin').addEventListener('click', function(e) {
+          e.preventDefault();
+          showLogin();
+        });
+      }
+      
+      function showLogin() {
+        registerTab.classList.remove('active');
+        loginTab.classList.add('active');
+        registerForm.classList.remove('active');
+        loginForm.classList.add('active');
+        authFooter.innerHTML = 'Don\'t have an account? <a href="#" id="switchToRegister">Register</a>';
+        registerError.style.display = 'none';
+        
+        document.getElementById('switchToRegister').addEventListener('click', function(e) {
+          e.preventDefault();
+          showRegister();
+        });
+      }
+      
+      // Initialize tab switching
+      document.getElementById('switchToRegister').addEventListener('click', function(e) {
+        e.preventDefault();
+        showRegister();
+      });
+      
+      // Header button events
+      document.getElementById('showLogin').addEventListener('click', function() {
+        showLogin();
+        document.querySelector('.auth-panel-container').scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+      
+      document.getElementById('showRegister').addEventListener('click', function() {
+        showRegister();
+        document.querySelector('.auth-panel-container').scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+  </script>
+	<script>
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://ycgagwtbzlaufgdrvodv.supabase.co'
+const supabaseKey = process.env.SUPABASE_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)</script>
+</body>
+</html>

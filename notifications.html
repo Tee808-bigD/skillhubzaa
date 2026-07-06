@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications - SkillHub</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/notifications.css">
+</head>
+<body>
+  <header>
+    <!-- Same header as before -->
+  </header>
+
+  <main class="container">
+    <div class="notifications-container">
+      <div class="notifications-header">
+        <h1>Notifications</h1>
+        <div class="notifications-actions">
+          <button class="btn btn-outline" id="markAllRead">Mark all as read</button>
+          <button class="btn btn-outline" id="clearAll">Clear all</button>
+        </div>
+      </div>
+      
+      <div class="notifications-tabs">
+        <button class="tab-btn active" data-tab="all">All</button>
+        <button class="tab-btn" data-tab="unread">Unread</button>
+        <button class="tab-btn" data-tab="messages">Messages</button>
+        <button class="tab-btn" data-tab="updates">Updates</button>
+      </div>
+      
+      <div class="notifications-list" id="notificationsList">
+        <!-- Notifications will be loaded here -->
+      </div>
+    </div>
+  </main>
+
+  <script src="js/notifications.js"></script>
+</body>
+</html>

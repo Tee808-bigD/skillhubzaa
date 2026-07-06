@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login — SkillHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --primary: #e63946;
+      --primary-dark: #c1121f;
+      --secondary: #2b2d42;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --text: #222;
+      --muted: #6c757d;
+      --light-gray: #e9ecef;
+      --white: #ffffff;
+      --border-radius: 8px;
+      --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background-color: var(--white);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* Header Styles */
+    header {
+      background-color: var(--white);
+      box-shadow: var(--box-shadow);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      padding: 0.5rem 0;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+
+    .brand .logo {
+      background: var(--primary);
+      color: var(--white);
+      padding: 0.5rem 0.7rem;
+      border-radius: var(--border-radius);
+      font-weight: 800;
+    }
+
+    .auth-links a {
+      margin-left: 0.6rem;
+      text-decoration: none;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    /* Auth Container */
+    .auth-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 80px);
+      padding: 2rem;
+    }
+
+    .auth-card {
+      background: var(--white);
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      width: 100%;
+      max-width: 450px;
+      padding: 2.5rem;
+    }
+
+    .auth-card h2 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+      color: var(--secondary);
+    }
+
+    .auth-card p {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 1px solid var(--light-gray);
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+    }
+
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.8rem;
+      border-radius: var(--border-radius);
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: var(--white);
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .error-message {
+      color: var(--primary);
+      background-color: rgba(230, 57, 70, 0.1);
+      padding: 0.75rem;
+      border-radius: var(--border-radius);
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .text-link {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    footer {
+      background: var(--light);
+      padding: 1.4rem;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    @media (max-width: 768px) {
+      .auth-card {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand"><div class="logo">S</div>SkillHub</div>
+      <div class="auth-links"><a href="index.html">Back to Home</a></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="auth-container">
+      <div class="auth-card">
+        <h2>Welcome Back</h2>
+        <p>Login to access your professional network</p>
+        
+        <form id="loginForm">
+          <div class="error-message" id="loginError"></div>
+          
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Your password" required>
+          </div>
+          
+          <div class="form-options">
+            <div>
+              <input type="checkbox" id="remember">
+              <label for="remember">Remember me</label>
+            </div>
+            <a href="#" class="text-link">Forgot password?</a>
+          </div>
+          
+          <button type="submit" class="btn btn-primary">Login</button>
+          
+          <div class="auth-footer">
+            Don't have an account? <a href="index.html" class="text-link">Register</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">&copy; 2023 SkillHub</div>
+  </footer>
+
+  <script>
+    // Initialize Supabase client
+    const supabaseUrl = 'https://qvyvxfyisotlgoyibdcj.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljZ2Fnd3RiemxhdWZnZHJ2b2R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMTM3MDAsImV4cCI6MjA3MDY4OTcwMH0.CXtVaN_0FjilhfYVNbX0DrqrrFRHADsLVNzwdMxs17Y'; // Replace with your actual anon/public key
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if already logged in
+      if (localStorage.getItem('skillhub_user')) {
+        window.location.href = 'feed.html';
+      }
+
+      const loginForm = document.getElementById('loginForm');
+      const loginError = document.getElementById('loginError');
+      
+      loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const rememberMe = document.getElementById('remember').checked;
+        
+        // Validate inputs
+        if (!email || !password) {
+          showError('Please enter both email and password');
+          return;
+        }
+        
+        try {
+          // Sign in with Supabase
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+          });
+          
+          if (error) {
+            showError(error.message);
+            return;
+          }
+          
+          // Successful login
+          if (rememberMe) {
+            localStorage.setItem('rememberedEmail', email);
+          } else {
+            localStorage.removeItem('rememberedEmail');
+          }
+          
+          await saveUserSession(data.user);
+          window.location.href = 'feed.html';
+        } catch (err) {
+          showError('An error occurred during login');
+          console.error(err);
+        }
+      });
+      
+      async function saveUserSession(user) {
+        // Get additional user data from the users table
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching user profile:', error);
+          // Fallback to basic user info if profile fetch fails
+          localStorage.setItem('skillhub_user', JSON.stringify({
+            id: user.id,
+            email: user.email,
+            name: user.email,
+            avatar: 'https://i.pravatar.cc/150?u=' + user.email,
+            type: 'professional'
+          }));
+          return;
+        }
+        
+        localStorage.setItem('skillhub_user', JSON.stringify({
+          id: user.id,
+          email: user.email,
+          name: data?.name || user.email,
+          avatar: data?.avatar || 'https://i.pravatar.cc/150?u=' + user.email,
+          type: data?.type || 'professional'
+        }));
+      }
+      
+      function showError(message) {
+        loginError.textContent = message;
+        loginError.style.display = 'block';
+      }
+      
+      // Pre-fill email if remembered
+      const rememberedEmail = localStorage.getItem('rememberedEmail');
+      if (rememberedEmail) {
+        document.getElementById('email').value = rememberedEmail;
+        document.getElementById('remember').checked = true;
+      }
+    });
+  </script>
+</body>
+</html>

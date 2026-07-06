@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile — SkillHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    :root {
+      --primary: #ff4757; --primary-dark: #ff6b81; --secondary: #a4b0be; 
+      --light: #2f3542; --muted: #747d8c; --dark: #1e272e; --text: #f1f2f6; 
+      --light-gray: #57606f; --white: #ffffff; --max-width: 1200px; 
+      --border-radius: 10px; --box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      --card-bg: rgba(30, 39, 46, 0.7);
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+      line-height: 1.6; color: var(--text); 
+      background: linear-gradient(135deg, #1e272e 0%, #2f3542 100%);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    .container { 
+      width: 100%; max-width: var(--max-width); margin: 0 auto; 
+      padding: 0 1rem; animation: fadeIn 0.5s ease-out; 
+    }
+    
+    header { 
+      background: rgba(30, 39, 46, 0.9); 
+      backdrop-filter: blur(10px);
+      box-shadow: var(--box-shadow); position: sticky; top: 0; z-index: 1000;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .nav { 
+      display: flex; align-items: center; justify-content: space-between; 
+      padding: 1rem 0; 
+    }
+    
+    .brand { 
+      display: flex; align-items: center; gap: 0.6rem; 
+      font-weight: 700; font-size: 1.25rem; color: var(--white); 
+    }
+    
+    .brand .logo { 
+      background: var(--primary); color: var(--white); 
+      padding: 0.5rem 0.7rem; border-radius: var(--border-radius); 
+      font-weight: 800; animation: pulse 2s infinite;
+    }
+    
+    .btn { 
+      display: inline-block; padding: 0.5rem 1.2rem; 
+      border-radius: var(--border-radius); font-weight: 600; 
+      cursor: pointer; transition: all 0.3s ease;
+      position: relative; overflow: hidden;
+    }
+    
+    .btn:before {
+      content: ''; position: absolute; top: 0; left: -100%;
+      width: 100%; height: 100%; background: rgba(255,255,255,0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .btn:hover:before { left: 100%; }
+    
+    .btn-primary { 
+      background: var(--primary); color: var(--white); 
+      border: 1px solid var(--primary); box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+    }
+    
+    .btn-primary:hover { 
+      background: var(--primary-dark); transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 107, 129, 0.4);
+    }
+    
+    .btn-outline { 
+      background: transparent; color: var(--primary); 
+      border: 1px solid var(--primary);
+    }
+    
+    .btn-outline:hover { 
+      background: rgba(255, 71, 87, 0.1); transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(255, 71, 87, 0.2);
+    }
+    
+    .btn-danger {
+      background: #ff4757;
+      color: white;
+      border: 1px solid #ff4757;
+      margin-right: auto;
+    }
+
+    .btn-danger:hover {
+      background: #ff6b81;
+      border-color: #ff6b81;
+    }
+    
+    .profile-container {
+      max-width: var(--max-width); margin: 2rem auto;
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    .profile-header {
+      display: flex; gap: 2rem; margin-bottom: 2rem; 
+      background: var(--card-bg); padding: 2rem; 
+      border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+    
+    .profile-header:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+    
+    .profile-avatar-container {
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+    }
+    
+    .profile-avatar {
+      width: 150px; height: 150px; border-radius: 50%; 
+      overflow: hidden; border: 3px solid var(--primary);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3); transition: all 0.3s ease;
+    }
+    
+    .profile-avatar:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 30px rgba(255, 71, 87, 0.4);
+    }
+    
+    .profile-avatar img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    
+    .avatar-actions {
+      display: flex; gap: 1rem; width: 100%;
+    }
+    
+    .profile-info {
+      flex: 1;
+    }
+    
+    .profile-info h1 {
+      margin-bottom: 0.5rem; color: var(--white);
+      font-size: 2rem;
+    }
+    
+    .profile-title {
+      color: var(--primary); font-weight: 600; 
+      margin-bottom: 0.5rem; font-size: 1.1rem;
+    }
+    
+    .profile-location {
+      color: var(--muted); margin-bottom: 1.5rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    
+    .profile-stats {
+      display: flex; gap: 2rem; margin-bottom: 1.5rem;
+    }
+    
+    .profile-stats div {
+      text-align: center; transition: all 0.3s ease;
+    }
+    
+    .profile-stats div:hover {
+      transform: translateY(-3px);
+    }
+    
+    .profile-stats strong {
+      display: block; font-size: 1.5rem; color: var(--white);
+    }
+    
+    .profile-stats span {
+      font-size: 0.9rem; color: var(--muted);
+    }
+    
+    .profile-tabs {
+      display: flex; border-bottom: 1px solid var(--light-gray);
+      margin-bottom: 1.5rem;
+    }
+    
+    .tab-btn {
+      padding: 0.8rem 1.5rem; background: none; border: none;
+      border-bottom: 3px solid transparent; font-weight: 600;
+      cursor: pointer; color: var(--muted); transition: all 0.3s ease;
+      position: relative;
+    }
+    
+    .tab-btn:hover {
+      color: var(--white);
+    }
+    
+    .tab-btn.active {
+      color: var(--primary); border-bottom-color: var(--primary);
+    }
+    
+    .tab-btn.active:after {
+      content: ''; position: absolute; bottom: -4px; left: 0;
+      width: 100%; height: 3px; background: var(--primary);
+      border-radius: 3px;
+    }
+    
+    .tab-content {
+      display: none; padding: 1.5rem; background: var(--card-bg);
+      border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      margin-bottom: 2rem; border: 1px solid rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px); animation: fadeIn 0.5s ease-out;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .tab-content h3 {
+      margin-bottom: 1.5rem; color: var(--white); position: relative;
+      padding-bottom: 0.5rem;
+    }
+    
+    .tab-content h3:after {
+      content: ''; position: absolute; bottom: 0; left: 0;
+      width: 50px; height: 3px; background: var(--primary);
+      border-radius: 3px;
+    }
+    
+    .skills-list {
+      display: flex; flex-wrap: wrap; gap: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .skill-tag {
+      background: rgba(255, 71, 87, 0.1); padding: 0.5rem 1rem;
+      border-radius: 20px; font-size: 0.9rem; color: var(--primary);
+      border: 1px solid var(--primary); transition: all 0.3s ease;
+    }
+    
+    .skill-tag:hover {
+      background: var(--primary); color: var(--white);
+      transform: translateY(-2px);
+    }
+    
+    .contact-info {
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    
+    .contact-info p {
+      display: flex; align-items: center; gap: 0.8rem;
+      color: var(--text);
+    }
+    
+    .contact-info i {
+      color: var(--primary); width: 20px; text-align: center;
+    }
+    
+    .services-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .service-card {
+      background: var(--card-bg); padding: 1.5rem; 
+      border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;
+    }
+    
+    .service-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      border-color: var(--primary);
+    }
+    
+    .service-card h4 {
+      margin-bottom: 0.5rem; color: var(--white);
+    }
+    
+    .service-price {
+      color: var(--primary); font-weight: 600; 
+      margin: 0.5rem 0; font-size: 1.2rem;
+    }
+    
+    .reviews-list {
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+    
+    .review-card {
+      background: var(--card-bg); padding: 1.5rem; 
+      border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;
+    }
+    
+    .review-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+    
+    .review-header {
+      display: flex; align-items: center; margin-bottom: 1rem;
+    }
+    
+    .review-header img {
+      width: 50px; height: 50px; border-radius: 50%; 
+      margin-right: 1rem; border: 2px solid var(--primary);
+    }
+    
+    .review-rating {
+      color: var(--primary); margin-left: auto;
+      font-size: 1.1rem;
+    }
+    
+    .review-time {
+      color: var(--muted); font-size: 0.9rem;
+    }
+    
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0,
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+    
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    
+    .modal-content {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: var(--border-radius);
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+    }
+    
+    .modal-overlay.active .modal-content {
+      transform: translateY(0);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    
+    .modal-header h3 {
+      margin: 0;
+      color: var(--white);
+    }
+    
+    .close-modal {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .close-modal:hover {
+      color: var(--primary);
+    }
+    
+    .rating-stars {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 1.5rem 0;
+    }
+    
+    .rating-star {
+      font-size: 2rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .rating-star.active {
+      color: var(--primary);
+    }
+    
+    .form-section {
+      margin-bottom: 2rem;
+    }
+    
+    .form-section h3 {
+      margin-bottom: 1rem; color: var(--white);
+    }
+    
+    .avatar-upload {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 1rem; margin-bottom: 1.5rem;
+    }
+    
+    .avatar-preview {
+      width: 150px; height: 150px; border-radius: 50%;
+      overflow: hidden; border: 3px solid var(--primary);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    }
+    
+    .avatar-preview img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    
+    #avatarInput {
+      display: none;
+    }
+    
+    .form-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1.5rem; margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+      display: block; margin-bottom: 0.5rem; color: var(--muted);
+    }
+    
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 0.8rem; border-radius: var(--border-radius);
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text); transition: all 0.3s ease;
+    }
+    
+    .form-group input:focus, .form-group textarea:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(255, 71, 87, 0.2);
+    }
+    
+    .form-group textarea {
+      min-height: 120px; resize: vertical;
+    }
+    
+    .tags-input {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      padding: 0.8rem; border-radius: var(--border-radius);
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .tag {
+      background: rgba(255, 71, 87, 0.1); padding: 0.5rem 1rem;
+      border-radius: 20px; font-size: 0.9rem; color: var(--primary);
+      border: 1px solid var(--primary); display: flex; align-items: center;
+    }
+    
+    .remove-tag {
+      margin-left: 0.5rem; cursor: pointer;
+    }
+    
+    #skillInput {
+      flex: 1; background: transparent; border: none;
+      color: var(--text); min-width: 100px;
+    }
+    
+    #skillInput:focus {
+      outline: none;
+    }
+    
+    .form-actions {
+      display: flex; justify-content: flex-end; gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+    
+    .particle {
+      position: absolute;
+      background: rgba(255, 71, 87, 0.5);
+      border-radius: 50%;
+      animation: float 15s infinite linear;
+    }
+    
+    @media (max-width: 768px) {
+      .profile-header {
+        flex-direction: column; align-items: center; text-align: center;
+      }
+      
+      .profile-stats {
+        justify-content: center;
+      }
+      
+      .avatar-actions {
+        justify-content: center;
+      }
+      
+      .profile-tabs {
+        overflow-x: auto; scrollbar-width: none;
+      }
+      
+      .profile-tabs::-webkit-scrollbar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Floating particles background -->
+  <div class="particles" id="particles"></div>
+  
+  <header>
+    <div class="container nav">
+      <div class="brand"><div class="logo">S</div>SkillHub</div>
+      <div><a href="feed.html" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back to feed</a></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="profile-container">
+      <div class="profile-header">
+        <div class="profile-avatar-container">
+          <img src="" alt="Profile Photo" class="profile-avatar" id="profileAvatar">
+          <div class="avatar-actions">
+            <button class="btn btn-outline" id="messageBtn">
+              <i class="fas fa-envelope"></i> Message
+            </button>
+            <button class="btn btn-primary" id="rateBtn">
+              <i class="fas fa-star"></i> Rate
+            </button>
+          </div>
+        </div>
+        
+        <div class="profile-info">
+          <h1 id="profileName"></h1>
+          <p class="profile-title" id="profileTitle"></p>
+          <p class="profile-location" id="profileLocation">
+            <i class="fas fa-map-marker-alt"></i> <span id="locationText"></span>
+          </p>
+          
+          <div class="profile-stats">
+            <div>
+              <strong id="ratingValue">4.8</strong>
+              <span>Rating</span>
+            </div>
+            <div>
+              <strong id="jobsCompleted">142</strong>
+              <span>Jobs</span>
+            </div>
+            <div>
+              <strong id="yearsExperience">5</strong>
+              <span>Years</span>
+            </div>
+          </div>
+          
+          <button class="btn btn-outline" id="editProfile">
+            <i class="fas fa-edit"></i> Edit Profile
+          </button>
+        </div>
+      </div>
+      
+      <div class="profile-tabs">
+        <button class="tab-btn active" data-tab="about">About</button>
+        <button class="tab-btn" data-tab="services">Services</button>
+        <button class="tab-btn" data-tab="portfolio">Portfolio</button>
+        <button class="tab-btn" data-tab="reviews">Reviews</button>
+      </div>
+      
+      <div class="tab-content active" id="aboutTab">
+        <h3>About</h3>
+        <p id="profileBio"></p>
+        
+        <h3>Skills</h3>
+        <div class="skills-list" id="skillsList"></div>
+        
+        <h3>Contact</h3>
+        <div class="contact-info">
+          <p><i class="fas fa-phone"></i> <span id="profilePhone"></span></p>
+          <p><i class="fas fa-envelope"></i> <span id="profileEmail"></span></p>
+          <p><i class="fas fa-map-marker-alt"></i> <span id="profileAddress"></span></p>
+        </div>
+      </div>
+      
+      <div class="tab-content" id="servicesTab">
+        <h3>Services Offered</h3>
+        <div class="services-grid" id="servicesGrid"></div>
+      </div>
+      
+      <div class="tab-content" id="portfolioTab">
+        <h3>Previous Projects</h3>
+        <div class="portfolio-grid" id="portfolioGrid"></div>
+        
+        <h3>Project Locations</h3>
+        <div id="projectsMap" style="height: 400px; border-radius: var(--border-radius); overflow: hidden;"></div>
+      </div>
+      
+      <div class="tab-content" id="reviewsTab">
+        <h3>Client Reviews</h3>
+        <div class="reviews-list" id="reviewsList"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Message Modal -->
+  <div class="modal-overlay" id="messageModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Send Message</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="messageForm">
+        <div class="form-group">
+          <label for="messageSubject">Subject</label>
+          <input type="text" id="messageSubject" required>
+        </div>
+        <div class="form-group">
+          <label for="messageContent">Message</label>
+          <textarea id="messageContent" rows="5" required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Send Message</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Rate Modal -->
+  <div class="modal-overlay" id="rateModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Rate Professional</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="rateForm">
+        <div class="rating-stars">
+          <i class="fas fa-star rating-star" data-rating="1"></i>
+          <i class="fas fa-star rating-star" data-rating="2"></i>
+          <i class="fas fa-star rating-star" data-rating="3"></i>
+          <i class="fas fa-star rating-star" data-rating="4"></i>
+          <i class="fas fa-star rating-star" data-rating="5"></i>
+        </div>
+        <input type="hidden" id="selectedRating" value="0">
+        <div class="form-group">
+          <label for="reviewComment">Your Review</label>
+          <textarea id="reviewComment" rows="5" required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Review</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal-overlay" id="editProfileModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Profile</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="editProfileForm">
+        <div class="form-section">
+          <h3>Profile Picture</h3>
+          <div class="avatar-upload">
+            <div class="avatar-preview" id="avatarPreview">
+              <img src="" alt="Profile Photo" id="avatarPreviewImg">
+            </div>
+            <input type="file" id="avatarInput" accept="image/*">
+            <label for="avatarInput" class="btn btn-outline">Change Photo</label>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <h3>Basic Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="editFullName">Full Name</label>
+              <input type="text" id="editFullName" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editProfessionalTitle">Professional Title</label>
+              <input type="text" id="editProfessionalTitle" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editLocation">Location</label>
+              <input type="text" id="editLocation">
+            </div>
+            
+            <div class="form-group">
+              <label for="editPhone">Phone Number</label>
+              <input type="tel" id="editPhone">
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <h3>About You</h3>
+          <div class="form-group">
+            <label for="editBio">Bio</label>
+            <textarea id="editBio" rows="5"></textarea>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <h3>Skills & Services</h3>
+          <div class="form-group">
+            <label>Your Skills</label>
+            <div class="tags-input" id="skillsInput">
+              <input type="text" id="skillInput" placeholder="Add a skill">
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Service Modal -->
+  <div class="modal-overlay" id="editServiceModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Service</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="editServiceForm">
+        <input type="hidden" id="editServiceIndex">
+        <div class="form-group">
+          <label for="editServiceName">Service Name</label>
+          <input type="text" id="editServiceName" required>
+        </div>
+        <div class="form-group">
+          <label for="editServicePrice">Price</label>
+          <input type="text" id="editServicePrice" required>
+        </div>
+        <div class="form-group">
+          <label for="editServiceDescription">Description</label>
+          <textarea id="editServiceDescription" rows="4" required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline close-modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="deleteServiceBtn">Delete</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Service Modal -->
+  <div class="modal-overlay" id="addServiceModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add New Service</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="addServiceForm">
+        <div class="form-group">
+          <label for="addServiceName">Service Name</label>
+          <input type="text" id="addServiceName" required>
+        </div>
+        <div class="form-group">
+          <label for="addServicePrice">Price</label>
+          <input type="text" id="addServicePrice" required>
+        </div>
+        <div class="form-group">
+          <label for="addServiceDescription">Description</label>
+          <textarea id="addServiceDescription" rows="4" required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Service</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Portfolio Modal -->
+  <div class="modal-overlay" id="editPortfolioModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Portfolio Item</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="editPortfolioForm">
+        <input type="hidden" id="editPortfolioIndex">
+        <div class="form-group">
+          <label for="editPortfolioTitle">Title</label>
+          <input type="text" id="editPortfolioTitle" required>
+        </div>
+        <div class="form-group">
+          <label for="editPortfolioImage">Image URL</label>
+          <input type="text" id="editPortfolioImage" required>
+        </div>
+        <div class="form-group">
+          <label for="editPortfolioDescription">Description</label>
+          <textarea id="editPortfolioDescription" rows="4" required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline close-modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="deletePortfolioBtn">Delete</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Portfolio Modal -->
+  <div class="modal-overlay" id="addPortfolioModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add Portfolio Item</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="addPortfolioForm">
+        <div class="form-group">
+          <label for="addPortfolioTitle">Title</label>
+          <input type="text" id="addPortfolioTitle" required>
+        </div>
+        <div class="form-group">
+          <label for="addPortfolioImage">Image URL</label>
+          <input type="text" id="addPortfolioImage" required>
+        </div>
+        <div class="form-group">
+          <label for="addPortfolioDescription">Description</label>
+          <textarea id="addPortfolioDescription" rows="4" required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Create floating particles
+    function createParticles() {
+      const particlesContainer = document.getElementById('particles');
+      const particleCount = 30;
+      
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+        
+        // Random properties
+        const size = Math.random() * 5 + 2;
+        const posX = Math.random() * 100;
+        const posY = Math.random() * 100;
+        const delay = Math.random() * 15;
+        const duration = 10 + Math.random() * 20;
+        const opacity = 0.2 + Math.random() * 0.3;
+        
+        // Apply styles
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${posX}%`;
+        particle.style.top = `${posY}%`;
+        particle.style.animationDelay = `${delay}s`;
+        particle.style.animationDuration = `${duration}s`;
+        particle.style.opacity = opacity;
+        
+        // Random color variation
+        if (Math.random() > 0.7) {
+          particle.style.background = `rgba(255, 107, 129, ${opacity})`;
+        }
+        
+        particlesContainer.appendChild(particle);
+      }
+    }
+    
+    // Initialize particles
+    createParticles();
+
+    // Load profile data
+    const stored = localStorage.getItem('skillhub_user');
+    if(!stored) window.location.href = 'login.html';
+    const me = JSON.parse(stored);
+    
+    // Set profile info
+    document.getElementById('profileAvatar').src = me.avatar;
+    document.getElementById('profileName').textContent = me.name || 'Your Name';
+    document.getElementById('profileTitle').textContent = me.type ? me.type.charAt(0).toUpperCase() + me.type.slice(1) : 'Professional';
+    document.getElementById('locationText').textContent = me.location || 'Location not specified';
+    document.getElementById('profileBio').textContent = me.bio || 'No bio added yet. Tell clients about your skills, experience, and rates.';
+    document.getElementById('profilePhone').textContent = me.phone || 'Not provided';
+    document.getElementById('profileEmail').textContent = me.email || 'Not provided';
+    document.getElementById('profileAddress').textContent = me.address || 'Not provided';
+    
+    // Tab functionality
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const tabId = this.dataset.tab;
+        
+        // Update active tab
+        tabBtns.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Show correct content
+        tabContents.forEach(content => {
+          content.classList.remove('active');
+          if (content.id === `${tabId}Tab`) {
+            content.classList.add('active');
+          }
+        });
+
+        // Initialize map when portfolio tab is clicked
+        if (tabId === 'portfolio' && !window.mapInitialized) {
+          setTimeout(initMap, 300);
+          window.mapInitialized = true;
+        }
+      });
+    });
+    
+    // Modal functionality
+    function setupModal(modalId, openBtnId) {
+      const modal = document.getElementById(modalId);
+      const openBtn = openBtnId ? document.getElementById(openBtnId) : null;
+      const closeBtns = document.querySelectorAll(`#${modalId} .close-modal`);
+      
+      if (openBtn) {
+        openBtn.addEventListener('click', () => {
+          modal.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        });
+      }
+      
+      closeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          modal.classList.remove('active');
+          document.body.style.overflow = 'auto';
+        });
+      });
+      
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+          document.body.style.overflow = 'auto';
+        }
+      });
+    }
+    
+    // Initialize modals
+    setupModal('messageModal', 'messageBtn');
+    setupModal('rateModal', 'rateBtn');
+    setupModal('editProfileModal', 'editProfile');
+    setupModal('editServiceModal');
+    setupModal('addServiceModal');
+    setupModal('editPortfolioModal');
+    setupModal('addPortfolioModal');
+    
+    // Rating stars functionality
+    const ratingStars = document.querySelectorAll('.rating-star');
+    const selectedRating = document.getElementById('selectedRating');
+    
+    ratingStars.forEach(star => {
+      star.addEventListener('click', function() {
+        const rating = parseInt(this.dataset.rating);
+        selectedRating.value = rating;
+        
+        ratingStars.forEach((s, index) => {
+          if (index < rating) {
+            s.classList.add('active');
+          } else {
+            s.classList.remove('active');
+          }
+        });
+      });
+    });
+    
+    // Avatar upload preview
+    document.getElementById('avatarInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          document.getElementById('avatarPreviewImg').src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // Form submissions
+    document.getElementById('messageForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const subject = document.getElementById('messageSubject').value;
+      const content = document.getElementById('messageContent').value;
+      
+      // In a real app, this would send to server
+      alert(`Message sent!\nSubject: ${subject}\nContent: ${content}`);
+      document.getElementById('messageModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+      this.reset();
+    });
+    
+    document.getElementById('rateForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const rating = selectedRating.value;
+      const comment = document.getElementById('reviewComment').value;
+      
+      if (rating === "0") {
+        alert('Please select a rating');
+        return;
+      }
+      
+      // In a real app, this would send to server
+      alert(`Thank you for your ${rating}-star review!\nComment: ${comment}`);
+      
+      // Add to reviews list (demo)
+      const reviewsList = document.getElementById('reviewsList');
+      const reviewEl = document.createElement('div');
+      reviewEl.className = 'review-card';
+      reviewEl.innerHTML = `
+        <div class="review-header">
+          <img src="${me.avatar}" alt="You">
+          <div>
+            <h4>You</h4>
+            <div class="review-time">Just now</div>
+          </div>
+          <div class="review-rating">
+            ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}
+          </div>
+        </div>
+        <p>${comment}</p>
+      `;
+      reviewsList.prepend(reviewEl);
+      
+      document.getElementById('rateModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+      this.reset();
+      
+      // Reset stars
+      ratingStars.forEach(star => star.classList.remove('active'));
+      selectedRating.value = "0";
+    });
+    
+    document.getElementById('editProfileForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Get form values
+      const name = document.getElementById('editFullName').value;
+      const title = document.getElementById('editProfessionalTitle').value;
+      const location = document.getElementById('editLocation').value;
+      const phone = document.getElementById('editPhone').value;
+      const bio = document.getElementById('editBio').value;
+      const avatar = document.getElementById('avatarPreviewImg').src;
+      
+      // Update profile (in a real app, this would save to server)
+      me.name = name;
+      me.type = title;
+      me.location = location;
+      me.phone = phone;
+      me.bio = bio;
+      me.avatar = avatar;
+      
+      localStorage.setItem('skillhub_user', JSON.stringify(me));
+      
+      // Update displayed profile
+      document.getElementById('profileName').textContent = name;
+      document.getElementById('profileTitle').textContent = title;
+      document.getElementById('locationText').textContent = location;
+      document.getElementById('profilePhone').textContent = phone || 'Not provided';
+      document.getElementById('profileBio').textContent = bio;
+      document.getElementById('profileAvatar').src = avatar;
+      
+      alert('Profile updated successfully!');
+      document.getElementById('editProfileModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+    });
+    
+    // Load current profile data into edit form
+    document.getElementById('editProfile').addEventListener('click', function() {
+      document.getElementById('editFullName').value = me.name || '';
+      document.getElementById('editProfessionalTitle').value = me.type || '';
+      document.getElementById('editLocation').value = me.location || '';
+      document.getElementById('editPhone').value = me.phone || '';
+      document.getElementById('editBio').value = me.bio || '';
+      document.getElementById('avatarPreviewImg').src = me.avatar;
+    });
+    
+    // Skills management
+    const skills = me.skills || ['Plumbing', 'Pipe Repair', 'Installation'];
+    const skillsInput = document.getElementById('skillsInput');
+    
+    function renderSkills() {
+      skillsInput.innerHTML = '';
+      
+      skills.forEach((skill, index) => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.innerHTML = `
+          ${skill}
+          <span class="remove-tag" data-index="${index}">×</span>
+        `;
+        skillsInput.appendChild(tag);
+      });
+      
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = 'skillInput';
+      input.placeholder = 'Add a skill';
+      skillsInput.appendChild(input);
+      
+      // Add event listeners to remove buttons
+      document.querySelectorAll('.remove-tag').forEach(btn => {
+        btn.addEventListener('click', function() {
+          skills.splice(parseInt(this.dataset.index), 1);
+          renderSkills();
+        });
+      });
+      
+      // Add event listener to input
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && this.value.trim()) {
+          skills.push(this.value.trim());
+          this.value = '';
+          renderSkills();
+        }
+      });
+    }
+    
+    // Initialize skills
+    renderSkills();
+
+    // Services management
+    const services = me.services || [
+      { name: 'Basic Plumbing Repair', price: '$75', description: 'Fix leaks, clogs, and basic plumbing issues' },
+      { name: 'Pipe Installation', price: '$200', description: 'Professional pipe installation and replacement' },
+      { name: 'Bathroom Remodel', price: '$1500', description: 'Complete bathroom plumbing remodel' },
+      { name: 'Emergency Service', price: '$125', description: '24/7 emergency plumbing services' }
+    ];
+    
+    const servicesGrid = document.getElementById('servicesGrid');
+    
+    function renderServices() {
+      servicesGrid.innerHTML = '';
+      
+      services.forEach((service, index) => {
+        const serviceEl = document.createElement('div');
+        serviceEl.className = 'service-card';
+        serviceEl.innerHTML = `
+          <h4>${service.name}</h4>
+          <div class="service-price">${service.price}</div>
+          <p>${service.description}</p>
+          <button class="btn btn-outline edit-service" data-index="${index}" style="margin-top: 0.5rem;">
+            <i class="fas fa-edit"></i> Edit Service
+          </button>
+        `;
+        servicesGrid.appendChild(serviceEl);
+      });
+      
+      // Add "Add Service" button
+      const addServiceBtn = document.createElement('button');
+      addServiceBtn.className = 'btn btn-primary';
+      addServiceBtn.innerHTML = '<i class="fas fa-plus"></i> Add Service';
+      addServiceBtn.style.marginTop = '1rem';
+      addServiceBtn.id = 'addServiceBtn';
+      servicesGrid.parentNode.appendChild(addServiceBtn);
+      
+      // Add event listeners for edit buttons
+      document.querySelectorAll('.edit-service').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const index = parseInt(this.dataset.index);
+          const service = services[index];
+          
+          document.getElementById('editServiceIndex').value = index;
+          document.getElementById('editServiceName').value = service.name;
+          document.getElementById('editServicePrice').value = service.price;
+          document.getElementById('editServiceDescription').value = service.description;
+          
+          document.getElementById('editServiceModal').classList.add('active');
+          document.body.style.overflow = 'hidden';
+        });
+      });
+      
+      // Add event listener for add service button
+      document.getElementById('addServiceBtn').addEventListener('click', function() {
+        document.getElementById('addServiceModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+      });
+    }
+    
+    // Initialize services
+    renderServices();
+    
+    // Service form handlers
+    document.getElementById('editServiceForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const index = parseInt(document.getElementById('editServiceIndex').value);
+      services[index] = {
+        name: document.getElementById('editServiceName').value,
+        price: document.getElementById('editServicePrice').value,
+        description: document.getElementById('editServiceDescription').value
+      };
+      
+      renderServices();
+      document.getElementById('editServiceModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+    });
+    
+    document.getElementById('deleteServiceBtn').addEventListener('click', function() {
+      if (confirm('Are you sure you want to delete this service?')) {
+        const index = parseInt(document.getElementById('editServiceIndex').value);
+        services.splice(index, 1);
+        renderServices();
+        document.getElementById('editServiceModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+      }
+    });
+    
+    document.getElementById('addServiceForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      services.push({
+        name: document.getElementById('addServiceName').value,
+        price: document.getElementById('addServicePrice').value,
+        description: document.getElementById('addServiceDescription').value
+      });
+      
+      renderServices();
+      document.getElementById('addServiceModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+      this.reset();
+    });
+    
+    // Portfolio management
+    const portfolio = me.portfolio || [
+      { title: 'Kitchen Remodel', image: 'https://images.unsplash.com/photo-1556909114-44e1cd6167e5', description: 'Complete kitchen plumbing overhaul' },
+      { title: 'Bathroom Installation', image: 'https://images.unsplash.com/photo-1600566752355-35792bedcfea', description: 'New bathroom plumbing installation' },
+      { title: 'Office Building', image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2', description: 'Commercial plumbing installation' }
+    ];
+    
+    const portfolioGrid = document.getElementById('portfolioGrid');
+    portfolioGrid.style.display = 'grid';
+    portfolioGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
+    portfolioGrid.style.gap = '1.5rem';
+    
+    function renderPortfolio() {
+      portfolioGrid.innerHTML = '';
+      
+      portfolio.forEach((item, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'service-card';
+        itemEl.innerHTML = `
+          <img src="${item.image}" style="width:100%;height:200px;object-fit:cover;border-radius:var(--border-radius);margin-bottom:1rem;">
+          <h4>${item.title}</h4>
+          <p>${item.description}</p>
+          <button class="btn btn-outline edit-portfolio" data-index="${index}" style="margin-top: 0.5rem;">
+            <i class="fas fa-edit"></i> Edit
+          </button>
+        `;
+        portfolioGrid.appendChild(itemEl);
+      });
+      
+      // Add "Add Portfolio" button
+      const addPortfolioBtn = document.createElement('button');
+      addPortfolioBtn.className = 'btn btn-primary';
+      addPortfolioBtn.innerHTML = '<i class="fas fa-plus"></i> Add Portfolio Item';
+      addPortfolioBtn.style.marginTop = '1rem';
+      addPortfolioBtn.id = 'addPortfolioBtn';
+      portfolioGrid.parentNode.appendChild(addPortfolioBtn);
+      
+      // Add event listeners for edit buttons
+      document.querySelectorAll('.edit-portfolio').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const index = parseInt(this.dataset.index);
+          const item = portfolio[index];
+          
+          document.getElementById('editPortfolioIndex').value = index;
+          document.getElementById('editPortfolioTitle').value = item.title;
+          document.getElementById('editPortfolioImage').value = item.image;
+          document.getElementById('editPortfolioDescription').value = item.description;
+          
+          document.getElementById('editPortfolioModal').classList.add('active');
+          document.body.style.overflow = 'hidden';
+        });
+      });
+      
+      // Add event listener for add portfolio button
+      document.getElementById('addPortfolioBtn').addEventListener('click', function() {
+        document.getElementById('addPortfolioModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+      });
+    }
+    
+    // Initialize portfolio
+    renderPortfolio();
+    
+    // Portfolio form handlers
+    document.getElementById('editPortfolioForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const index = parseInt(document.getElementById('editPortfolioIndex').value);
+      portfolio[index] = {
+        title: document.getElementById('editPortfolioTitle').value,
+        image: document.getElementById('editPortfolioImage').value,
+        description: document.getElementById('editPortfolioDescription').value
+      };
+      
+      renderPortfolio();
+      document.getElementById('editPortfolioModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+    });
+    
+    document.getElementById('deletePortfolioBtn').addEventListener('click', function() {
+      if (confirm('Are you sure you want to delete this portfolio item?')) {
+        const index = parseInt(document.getElementById('editPortfolioIndex').value);
+        portfolio.splice(index, 1);
+        renderPortfolio();
+        document.getElementById('editPortfolioModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+      }
+    });
+    
+    document.getElementById('addPortfolioForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      portfolio.push({
+        title: document.getElementById('addPortfolioTitle').value,
+        image: document.getElementById('addPortfolioImage').value,
+        description: document.getElementById('addPortfolioDescription').value
+      });
+      
+      renderPortfolio();
+      document.getElementById('addPortfolioModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+      this.reset();
+    });
+    
+    // Initialize map (Leaflet)
+    function initMap() {
+      const map = L.map('projectsMap').setView([51.505, -0.09], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+      
+      // Add sample markers
+      L.marker([51.5, -0.09]).addTo(map)
+        .bindPopup('Kitchen Remodel Project')
+        .openPopup();
+      
+      L.marker([51.51, -0.1]).addTo(map)
+        .bindPopup('Bathroom Installation');
+    }
+    
+    // Load reviews (sample data)
+    const reviews = [
+      { user: 'Sarah J.', rating: 5, comment: 'Excellent work! Fixed my leak quickly and professionally.', time: '2 weeks ago', avatar: 'https://i.pravatar.cc/150?u=sarah' },
+      { user: 'Michael T.', rating: 4, comment: 'Good service, arrived on time and completed the job as promised.', time: '1 month ago', avatar: 'https://i.pravatar.cc/150?u=michael' },
+      { user: 'Lisa K.', rating: 5, comment: 'Highly recommend! Solved a complex plumbing issue that others couldn\'t figure out.', time: '3 months ago', avatar: 'https://i.pravatar.cc/150?u=lisa' }
+    ];
+    
+    const reviewsList = document.getElementById('reviewsList');
+    reviews.forEach(review => {
+      const reviewEl = document.createElement('div');
+      reviewEl.className = 'review-card';
+      reviewEl.innerHTML = `
+        <div class="review-header">
+          <img src="${review.avatar}" alt="${review.user}">
+          <div>
+            <h4>${review.user}</h4>
+            <div class="review-time">${review.time}</div>
+          </div>
+          <div class="review-rating">
+            ${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}
+          </div>
+        </div>
+        <p>${review.comment}</p>
+      `;
+      reviewsList.appendChild(reviewEl);
+    });
+  </script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</body>
+</html>

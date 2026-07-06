@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Register — SkillHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root{--primary:#e63946;--secondary:#2b2d42;--muted:#6c757d;--max:1000px}
+    *{box-sizing:border-box} body{font-family:Inter,Arial,sans-serif;margin:0;color:#111}
+    .container{max-width:var(--max);margin:0 auto;padding:1rem}
+    header{background:#f8f9fa;box-shadow:0 2px 6px rgba(0,0,0,0.04)}
+    .nav{display:flex;justify-content:space-between;align-items:center;padding:.9rem 0}
+    .brand{display:flex;gap:.6rem;align-items:center;font-weight:700;color:var(--secondary)}
+    main{padding:2rem 0}
+    .card{background:#fff;padding:1.6rem;border-radius:10px;max-width:720px;margin:0 auto;border:1px solid rgba(0,0,0,0.04)}
+    label{display:block;margin-bottom:.4rem;font-weight:600}
+    input,select{width:100%;padding:.75rem;border:1px solid #ddd;border-radius:8px;margin-bottom:1rem}
+    .btn{padding:.6rem 1rem;border-radius:8px;background:var(--primary);color:#fff;border:0;font-weight:800;cursor:pointer}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav"><div class="brand"><div class="logo" style="background:var(--primary);color:#fff;padding:.45rem .6rem;border-radius:8px">S</div>SkillHub</div><div><a href="login.html" style="text-decoration:none;color:var(--primary);font-weight:700">Login</a></div></div>
+  </header>
+
+  <main class="container">
+    <div class="card" role="form" aria-labelledby="registerTitle">
+      <h2 id="registerTitle">Create an account</h2>
+      <p class="muted">Join SkillHub as a Professional or Client.</p>
+
+      <label>Account type</label>
+      <select id="acctType">
+        <option value="professional">Professional</option>
+        <option value="client">Client</option>
+      </select>
+
+      <label>Full name</label>
+      <input id="fullName" placeholder="Your full name">
+
+      <label>Email</label>
+      <input id="email" type="email" placeholder="you@example.com">
+
+      <label>Password</label>
+      <input id="password" type="password" placeholder="At least 4 characters">
+
+      <label>Confirm password</label>
+      <input id="confirm" type="password" placeholder="Confirm password">
+
+      <div style="display:flex;gap:.6rem;align-items:center;margin-top:.6rem">
+        <button class="btn" id="registerBtn">Create account</button>
+        <div class="muted">Already have an account? <a href="login.html">Login</a></div>
+      </div>
+
+      <div id="regError" style="color:#c1121f;margin-top:.6rem;display:none"></div>
+    </div>
+  </main>
+
+  <footer style="background:#f8f9fa;padding:1.2rem;text-align:center;color:var(--muted)">&copy; 2023 SkillHub</footer>
+
+  <script>
+    const nameEl = document.getElementById('fullName');
+    const emailEl = document.getElementById('email');
+    const passEl = document.getElementById('password');
+    const confirmEl = document.getElementById('confirm');
+    const acctEl = document.getElementById('acctType');
+    const regBtn = document.getElementById('registerBtn');
+    const regError = document.getElementById('regError');
+
+    function showErr(msg){ regError.style.display='block'; regError.textContent = msg; }
+    function hideErr(){ regError.style.display='none'; }
+
+    regBtn.addEventListener('click', ()=>{
+      hideErr();
+      const name = nameEl.value.trim(); const email = emailEl.value.trim(); const pass = passEl.value; const conf = confirmEl.value;
+      if(!name || !email || !pass){ showErr('Please fill all required fields.'); return; }
+      if(!/\S+@\S+\.\S+/.test(email)){ showErr('Enter a valid email.'); return; }
+      if(pass.length < 4){ showErr('Password must be at least 4 characters.'); return; }
+      if(pass !== conf){ showErr('Passwords do not match.'); return; }
+
+      // fake account "create": store user
+      const user = { name: name, email: email, type: acctEl.value, avatar: 'https://i.pravatar.cc/150?u=' + encodeURIComponent(email) };
+      localStorage.setItem('skillhub_user', JSON.stringify(user));
+      // goto feed
+      window.location.href = 'feed.html';
+    });
+  </script>
+</body>
+</html>

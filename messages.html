@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages - SkillHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/messages.css">
+</head>
+	<style>.messages-container {
+  display: flex;
+  height: calc(100vh - 120px);
+  background: var(--white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+}
+
+.conversations-sidebar {
+  width: 350px;
+  border-right: 1px solid var(--light-gray);
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.search-box {
+  position: relative;
+  padding: 1rem;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
+  border: 1px solid var(--light-gray);
+  border-radius: 20px;
+}
+
+.search-box i {
+  position: absolute;
+  left: 1.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+}
+
+.conversations-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.conversation {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--light-gray);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.conversation:hover {
+  background: var(--light-gray);
+}
+
+.conversation.active {
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.conversation-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin-right: 1rem;
+  object-fit: cover;
+}
+
+.conversation-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.conversation-info h4 {
+  margin-bottom: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conversation-meta {
+  display: flex;
+  justify-content: space-between;
+}
+
+.conversation-meta p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unread-badge {
+  background: var(--primary);
+  color: var(--white);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  margin-left: 0.5rem;
+}
+
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--light-gray);
+  display: flex;
+  align-items: center;
+}
+
+.chat-partner {
+  display: flex;
+  align-items: center;
+}
+
+.chat-partner-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin-right: 1rem;
+  object-fit: cover;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background: #f5f6f8;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.message {
+  margin-bottom: 1rem;
+  max-width: 70%;
+}
+
+.message.sent {
+  margin-left: auto;
+}
+
+.message.received {
+  margin-right: auto;
+}
+
+.message-content {
+  display: inline-block;
+  padding: 0.8rem 1rem;
+  border-radius: 18px;
+  background: var(--white);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.message.sent .message-content {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.message-time {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.3rem 0 0 1rem;
+}
+
+.message-input {
+  display: flex;
+  padding: 1rem;
+  border-top: 1px solid var(--light-gray);
+}
+
+.message-input input {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--light-gray);
+  border-radius: 20px;
+  margin-right: 1rem;
+}
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: var(--white);
+  border-radius: var(--border-radius);
+  width: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 1rem;
+}
+
+.search-results {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 1rem;
+}
+
+.search-result {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+}
+
+.search-result:hover {
+  background: var(--light-gray);
+}
+
+.search-result img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 1rem;
+  object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .messages-container {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .conversations-sidebar {
+    width: 100%;
+    height: 300px;
+  }
+  
+  .chat-container {
+    height: 400px;
+  }
+}</style>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand"><div class="logo">S</div>SkillHub</div>
+      <nav>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="services.html">Services</a></li>
+          <li><a href="feed.html">Feed</a></li>
+        </ul>
+      </nav>
+      <div class="auth">
+        <!-- Filled by main.js -->
+      </div>
+    </div>
+  </header>
+	
+	<div class="messages-app">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="user-info">
+          <img src="" alt="Your Profile" id="userAvatar">
+          <h3 id="userName"></h3>
+        </div>
+        <div class="sidebar-actions">
+          <button id="newChatBtn"><i class="fas fa-comment-alt"></i></button>
+          <button id="menuBtn"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+      </div>
+      
+      <div class="search-bar">
+        <input type="text" placeholder="Search messages...">
+        <i class="fas fa-search"></i>
+      </div>
+      
+      <div class="chats-list" id="chatsList">
+        <!-- Chats will be loaded here -->
+      </div>
+    </div>
+    
+    <!-- Chat Area -->
+    <div class="chat-area" id="chatArea">
+      <div class="empty-chat">
+        <i class="fas fa-comments"></i>
+        <p>Select a chat to start messaging</p>
+      </div>
+      
+      <div class="active-chat" id="activeChat" style="display:none;">
+        <div class="chat-header">
+          <div class="chat-partner">
+            <img src="" alt="Profile" id="chatPartnerAvatar">
+            <div>
+              <h3 id="chatPartnerName"></h3>
+              <p id="chatPartnerStatus"></p>
+            </div>
+          </div>
+          <div class="chat-actions">
+            <button><i class="fas fa-phone"></i></button>
+            <button><i class="fas fa-video"></i></button>
+            <button><i class="fas fa-info-circle"></i></button>
+          </div>
+        </div>
+        
+        <div class="messages-container" id="messagesContainer">
+          <!-- Messages will be loaded here -->
+        </div>
+        
+        <div class="message-input">
+          <button class="emoji-btn"><i class="far fa-smile"></i></button>
+          <button class="attach-btn"><i class="fas fa-paperclip"></i></button>
+          <input type="text" placeholder="Type a message..." id="messageInput">
+          <button class="send-btn" id="sendMessageBtn"><i class="fas fa-paper-plane"></i></button>
+          <input type="file" id="fileInput" style="display:none;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Chat Modal -->
+  <div class="modal" id="newChatModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>New Chat</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="search-box">
+          <input type="text" placeholder="Search professionals..." id="searchInput">
+          <i class="fas fa-search"></i>
+        </div>
+        <div class="contacts-list" id="contactsList">
+          <!-- Contacts will be loaded here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="messages-container">
+      <div class="conversations-sidebar">
+        <div class="messages-header">
+          <h2>Messages</h2>
+          <button class="btn btn-primary" id="newMessageBtn">
+            <i class="fas fa-plus"></i> New
+          </button>
+        </div>
+        
+        <div class="search-box">
+          <input type="text" placeholder="Search conversations...">
+          <i class="fas fa-search"></i>
+        </div>
+        
+        <div class="conversations-list" id="conversationsList">
+          <!-- Conversations will be loaded here -->
+        </div>
+      </div>
+      
+      <div class="chat-container">
+        <div class="chat-header">
+          <div class="chat-partner">
+            <img src="" alt="Profile" id="chatPartnerAvatar">
+            <div>
+              <h3 id="chatPartnerName">Select a conversation</h3>
+              <p id="chatPartnerTitle"></p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+          <div class="empty-state">
+            <i class="fas fa-comments"></i>
+            <p>Select a conversation to start chatting</p>
+          </div>
+        </div>
+        
+        <div class="message-input">
+          <input type="text" placeholder="Type your message..." id="messageInput" disabled>
+          <button class="btn btn-primary" id="sendMessageBtn" disabled>
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- New Message Modal -->
+  <div class="modal" id="newMessageModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>New Message</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>To:</label>
+          <input type="text" placeholder="Search professionals..." id="recipientSearch">
+        </div>
+        <div class="search-results" id="searchResults">
+          <!-- Results will appear here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js">// Mobile menu toggle
+document.addEventListener('DOMContentLoaded', function() {
+  const mobileToggle = document.getElementById('mobileToggle');
+  if (mobileToggle) {
+    mobileToggle.addEventListener('click', function() {
+      const menu = document.getElementById('mobileMenu');
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+      this.setAttribute('aria-expanded', menu.style.display === 'block');
+    });
+  }
+
+  // Check authentication state
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  const authLinks = document.querySelector('.auth');
+  
+  if (currentUser && authLinks) {
+    authLinks.innerHTML = `
+      <a href="profile.html" class="user-avatar">
+        <img src="${currentUser.avatar}" alt="${currentUser.name}">
+      </a>
+      <button id="logoutBtn" class="btn btn-outline">Logout</button>
+    `;
+    
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+      localStorage.removeItem('currentUser');
+      window.location.href = 'index.html';
+    });
+  }
+});</script>
+  <script src="js/messages.js">document.addEventListener('DOMContentLoaded', function() {
+  // Check authentication
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  if (!currentUser) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  // Sample data
+  const professionals = [
+    {
+      id: 'prof1',
+      name: 'John Doe',
+      title: 'Plumbing Specialist',
+      avatar: 'https://i.pravatar.cc/150?u=plumber1',
+      online: true
+    },
+    {
+      id: 'prof2',
+      name: 'Sarah Smith',
+      title: 'Electrician',
+      avatar: 'https://i.pravatar.cc/150?u=electrician1',
+      online: false
+    },
+    // More professionals...
+  ];
+
+  const conversations = [
+    {
+      id: 'conv1',
+      professional: professionals[0],
+      lastMessage: 'Hi there! When would you like me to come?',
+      time: '2h ago',
+      unread: 3,
+      messages: [
+        {
+          id: 'msg1',
+          sender: 'professional',
+          content: 'Hello! I saw your plumbing service request',
+          time: '10:30 AM'
+        },
+        {
+          id: 'msg2',
+          sender: 'me',
+          content: 'Hi! Yes, I have a leak under my sink',
+          time: '10:32 AM'
+        },
+        // More messages...
+      ]
+    },
+    // More conversations...
+  ];
+
+  // DOM elements
+  const conversationsList = document.getElementById('conversationsList');
+  const chatMessages = document.getElementById('chatMessages');
+  const messageInput = document.getElementById('messageInput');
+  const sendMessageBtn = document.getElementById('sendMessageBtn');
+  const newMessageBtn = document.getElementById('newMessageBtn');
+  const newMessageModal = document.getElementById('newMessageModal');
+  const closeModal = document.querySelector('.close-modal');
+  const recipientSearch = document.getElementById('recipientSearch');
+  const searchResults = document.getElementById('searchResults');
+  
+  // Current conversation
+  let currentConversation = null;
+  
+  // Render conversations list
+  function renderConversations() {
+    conversationsList.innerHTML = '';
+    
+    if (conversations.length === 0) {
+      conversationsList.innerHTML = '<p class="empty-text">No conversations yet</p>';
+      return;
+    }
+    
+    conversations.forEach(conv => {
+      const convEl = document.createElement('div');
+      convEl.className = `conversation ${currentConversation?.id === conv.id ? 'active' : ''}`;
+      convEl.dataset.id = conv.id;
+      convEl.innerHTML = `
+        <img src="${conv.professional.avatar}" alt="${conv.professional.name}" class="conversation-avatar">
+        <div class="conversation-info">
+          <h4>${conv.professional.name}</h4>
+          <div class="conversation-meta">
+            <p>${conv.lastMessage}</p>
+            <span>${conv.time}</span>
+          </div>
+        </div>
+        ${conv.unread ? '<div class="unread-badge">'+conv.unread+'</div>' : ''}
+      `;
+      
+      convEl.addEventListener('click', () => loadConversation(conv.id));
+      conversationsList.appendChild(convEl);
+    });
+  }
+  
+  // Load a conversation
+  function loadConversation(convId) {
+    currentConversation = conversations.find(c => c.id === convId);
+    if (!currentConversation) return;
+    
+    // Update UI
+    document.getElementById('chatPartnerAvatar').src = currentConversation.professional.avatar;
+    document.getElementById('chatPartnerName').textContent = currentConversation.professional.name;
+    document.getElementById('chatPartnerTitle').textContent = currentConversation.professional.title;
+    
+    // Enable message input
+    messageInput.disabled = false;
+    sendMessageBtn.disabled = false;
+    
+    // Render messages
+    renderMessages();
+    
+    // Mark as read
+    currentConversation.unread = 0;
+    renderConversations();
+  }
+  
+  // Render messages
+  function renderMessages() {
+    chatMessages.innerHTML = '';
+    
+    if (!currentConversation || currentConversation.messages.length === 0) {
+      chatMessages.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-comments"></i>
+          <p>No messages yet</p>
+        </div>
+      `;
+      return;
+    }
+    
+    currentConversation.messages.forEach(msg => {
+      const isMe = msg.sender === 'me';
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${isMe ? 'sent' : 'received'}`;
+      messageEl.innerHTML = `
+        <div class="message-content">${msg.content}</div>
+        <div class="message-time">${msg.time}</div>
+      `;
+      chatMessages.appendChild(messageEl);
+    });
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+  
+  // Send message
+  function sendMessage() {
+    const content = messageInput.value.trim();
+    if (!content || !currentConversation) return;
+    
+    const newMessage = {
+      id: 'msg_' + Date.now(),
+      sender: 'me',
+      content,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    
+    // Add to conversation
+    currentConversation.messages.push(newMessage);
+    currentConversation.lastMessage = content;
+    currentConversation.time = 'Just now';
+    
+    // Update UI
+    renderMessages();
+    renderConversations();
+    messageInput.value = '';
+  }
+  
+  // New message modal
+  newMessageBtn.addEventListener('click', () => {
+    newMessageModal.style.display = 'flex';
+  });
+  
+  closeModal.addEventListener('click', () => {
+    newMessageModal.style.display = 'none';
+  });
+  
+  // Search professionals
+  recipientSearch.addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    const results = professionals.filter(prof => 
+      prof.name.toLowerCase().includes(query) || 
+      prof.title.toLowerCase().includes(query)
+    );
+    
+    renderSearchResults(results);
+  });
+  
+  function renderSearchResults(results) {
+    searchResults.innerHTML = '';
+    
+    if (results.length === 0) {
+      searchResults.innerHTML = '<p class="empty-text">No professionals found</p>';
+      return;
+    }
+    
+    results.forEach(prof => {
+      const resultEl = document.createElement('div');
+      resultEl.className = 'search-result';
+      resultEl.innerHTML = `
+        <img src="${prof.avatar}" alt="${prof.name}">
+        <div>
+          <h4>${prof.name}</h4>
+          <p>${prof.title}</p>
+        </div>
+        ${prof.online ? '<span class="online-dot"></span>' : ''}
+      `;
+      
+      resultEl.addEventListener('click', () => {
+        // In a real app, this would create a new conversation
+        alert(`Starting new conversation with ${prof.name}`);
+        newMessageModal.style.display = 'none';
+      });
+      
+      searchResults.appendChild(resultEl);
+    });
+  }
+  
+  // Event listeners
+  sendMessageBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') sendMessage();
+  });
+  
+  // Initial render
+  renderConversations();
+});</script>
+	<script src="js/messages.js"></script>
+</body>
+</html>

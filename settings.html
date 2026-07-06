@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - SkillHub</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/settings.css">
+</head>
+<body>
+  <header>
+    <!-- Same header as before -->
+  </header>
+
+  <main class="container">
+    <div class="settings-container">
+      <h1>Settings</h1>
+      
+      <div class="settings-sections">
+        <!-- Account Settings -->
+        <div class="settings-section">
+          <h2><i class="fas fa-user-cog"></i> Account Settings</h2>
+          <div class="settings-option">
+            <div class="option-info">
+              <h3>Profile Information</h3>
+              <p>Update your personal details and profile picture</p>
+            </div>
+            <button class="btn btn-outline">Edit</button>
+          </div>
+          
+          <div class="settings-option">
+            <div class="option-info">
+              <h3>Change Password</h3>
+              <p>Update your account password</p>
+            </div>
+            <button class="btn btn-outline">Change</button>
+          </div>
+          
+          <div class="settings-option">
+            <div class="option-info">
+              <h3>Email Preferences</h3>
+              <p>Manage your email notification settings</p>
+            </div>
+            <button class="btn btn-outline">Manage</button>
+          </div>
+        </div>
+        
+        <!-- App Settings -->
+        <div class="settings-section">
+          <h2><i class="fas fa-mobile-alt"></i> App Settings</h2>
+          <div class="settings-option toggle-option">
+            <div class="option-info">
+              <h3>Dark Mode</h3>
+              <p>Switch between light and dark theme</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="darkModeToggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          
+          <div class="settings-option toggle-option">
+            <div class="option-info">
+              <h3>Notifications</h3>
+              <p>Enable or disable app notifications</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notificationsToggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          
+          <div class="settings-option">
+            <div class="option-info">
+              <h3>Language</h3>
+              <p>Change app language</p>
+            </div>
+            <select id="languageSelect">
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- Privacy & Security -->
+        <div class="settings-section">
+          <h2><i class="fas fa-shield-alt"></i> Privacy & Security</h2>
+          <div class="settings-option toggle-option">
+            <div class="option-info">
+              <h3>Private Account</h3>
+              <p>Make your profile visible only to approved users</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="privateAccountToggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          
+          <div class="settings-option">
+            <div class="option-info">
+              <h3>Blocked Users</h3>
+              <p>Manage users you've blocked</p>
+            </div>
+            <button class="btn btn-outline">Manage</button>
+          </div>
+          
+          <div class="settings-option">
+            <div class="option-info">
+              <h3>Report a Problem</h3>
+              <p>Submit a complaint or report an issue</p>
+            </div>
+            <button class="btn btn-outline">Report</button>
+          </div>
+        </div>
+        
+        <!-- Account Actions -->
+        <div class="settings-section danger-zone">
+          <h2><i class="fas fa-exclamation-triangle"></i> Account Actions</h2>
+          <div class="settings-option">
+            <div class="option-info">
+              <h3>Deactivate Account</h3>
+              <p>Temporarily disable your account</p>
+            </div>
+            <button class="btn btn-outline">Deactivate</button>
+          </div>
+          
+          <div class="settings-option">
+            <div class="option-info">
+              <h3>Delete Account</h3>
+              <p>Permanently delete your account and all data</p>
+            </div>
+            <button class="btn btn-danger" id="deleteAccountBtn">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Delete Account Confirmation Modal -->
+  <div class="modal" id="deleteModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Delete Account</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete your account? This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="cancelDeleteBtn">Cancel</button>
+          <button class="btn btn-danger" id="confirmDeleteBtn">Delete Account</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/settings.js"></script>
+</body>
+</html>
