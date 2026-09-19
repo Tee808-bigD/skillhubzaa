@@ -243,15 +243,12 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
           )}
         </div>
 
-        {/* Top Header Overlay Bar (Add Reel Button & Sound Toggle) */}
+        {/* Top Header Overlay Bar (Sound Toggle) */}
         <div className="relative z-20 p-4 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/30 to-transparent">
-          <button
-            onClick={() => setIsCreateReelOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-full shadow-lg transition-all transform active:scale-95"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Add Reel</span>
-          </button>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white text-[11px] font-bold">
+            <Music className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <span>SkillHub Reels</span>
+          </div>
 
           <button
             onClick={() => setIsMuted(!isMuted)}
@@ -263,8 +260,19 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
         </div>
 
         {/* Bottom Creator & Caption Info Overlay */}
-        <div className="relative z-20 p-5 bg-gradient-to-t from-black/95 via-black/60 to-transparent text-white space-y-2.5">
+        <div className="relative z-20 p-5 bg-gradient-to-t from-black/95 via-black/60 to-transparent text-white space-y-3">
           
+          {/* Lower Bottom Left Add Reel Button */}
+          <div className="flex items-center justify-start pb-0.5">
+            <button
+              onClick={() => setIsCreateReelOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-full shadow-2xl transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/30"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Add Reel</span>
+            </button>
+          </div>
+
           {/* Creator Profile Info (Clickable to inspect author's profile info) */}
           <div className="flex items-center gap-3">
             <button
