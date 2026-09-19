@@ -373,6 +373,26 @@ export default function App() {
 
   const handleOpenDirectChat = (participantName: string) => {
     setActiveChatParticipantName(participantName);
+    setChatConversations(prev => {
+      const exists = prev.some(c => c.participantName.toLowerCase() === participantName.toLowerCase());
+      if (!exists) {
+        const id = `chat_${participantName.toLowerCase().replace(/\s+/g, '_')}`;
+        const newChat: ChatConversation = {
+          id,
+          participantId: id,
+          participantName,
+          participantHandle: `@${participantName.toLowerCase().replace(/\s+/g, '_')}`,
+          participantAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+          online: true,
+          lastMessage: 'Conversation started',
+          lastMessageTime: 'Just now',
+          unreadCount: 0,
+          messages: []
+        };
+        return [newChat, ...prev];
+      }
+      return prev;
+    });
     setCurrentView('messages');
   };
 
@@ -387,17 +407,35 @@ export default function App() {
       isMe: true
     };
 
-    setChatConversations(prev => prev.map(chat => {
-      if (chat.id === conversationId) {
-        return {
-          ...chat,
+    setChatConversations(prev => {
+      const exists = prev.some(chat => chat.id === conversationId);
+      if (!exists) {
+        const newChat: ChatConversation = {
+          id: conversationId,
+          participantId: conversationId,
+          participantName: conversationId.replace('chat_', '').replace(/_/g, ' '),
+          participantHandle: `@${conversationId.replace('chat_', '').toLowerCase()}`,
+          participantAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
+          online: true,
           lastMessage: text,
           lastMessageTime: 'Just now',
-          messages: [...chat.messages, userMsg]
+          unreadCount: 0,
+          messages: [userMsg]
         };
+        return [newChat, ...prev];
       }
-      return chat;
-    }));
+      return prev.map(chat => {
+        if (chat.id === conversationId) {
+          return {
+            ...chat,
+            lastMessage: text,
+            lastMessageTime: 'Just now',
+            messages: [...chat.messages, userMsg]
+          };
+        }
+        return chat;
+      });
+    });
 
     // Auto-reply simulation
     setTimeout(() => {
@@ -411,7 +449,7 @@ export default function App() {
       const replyMsg = {
         id: `reply_${Date.now()}`,
         senderId: conversationId,
-        senderName: conversationId.replace('chat_', '').replace('_', ' '),
+        senderName: conversationId.replace('chat_', '').replace(/_/g, ' '),
         senderAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
         text: randomReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

@@ -30,7 +30,8 @@ import {
   Download,
   ArrowUp,
   ArrowDown,
-  Camera
+  Camera,
+  ChevronLeft
 } from 'lucide-react';
 
 interface MessagesViewProps {
@@ -95,6 +96,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     return conversations[0]?.id || '';
   });
 
+  const [mobileShowChat, setMobileShowChat] = useState<boolean>(true);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -137,12 +139,14 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
   // Scroll Helpers
   const scrollToBottom = (smooth = true) => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTo({
-        top: messagesContainerRef.current.scrollHeight,
-        behavior: smooth ? 'smooth' : 'auto'
-      });
-    }
+    requestAnimationFrame(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: smooth ? 'smooth' : 'auto'
+        });
+      }
+    });
   };
 
   const scrollToTop = () => {
@@ -180,6 +184,18 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   useEffect(() => {
     scrollToBottom(false);
   }, [selectedChatId]);
+
+  useEffect(() => {
+    if (activeChatParticipantName) {
+      const match = conversations.find(c => 
+        c.participantName.toLowerCase() === activeChatParticipantName.toLowerCase()
+      );
+      if (match) {
+        setSelectedChatId(match.id);
+        setMobileShowChat(true);
+      }
+    }
+  }, [activeChatParticipantName, conversations]);
 
   const currentChatMessages = localMessagesOverride[activeConversation?.id] || activeConversation?.messages || [];
 
@@ -680,7 +696,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       )}
 
       {/* Left Sidebar: Direct Message Conversations List */}
-      <div className="md:col-span-4 border-r border-neutral-800 flex flex-col bg-[#141414]">
+      <div className={`md:col-span-4 border-r border-neutral-800 flex flex-col bg-[#141414] ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
         
         {/* Header & Search */}
         <div className="p-4 border-b border-neutral-800 space-y-3">
@@ -717,6 +733,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                   key={chat.id}
                   onClick={() => {
                     setSelectedChatId(chat.id);
+                    setMobileShowChat(true);
                     setInChatSearchQuery('');
                     setInChatSearchOpen(false);
                   }}
@@ -778,41 +795,52 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
       {/* Right Column: Active Conversation Area */}
       {activeConversation ? (
-        <div className="md:col-span-8 flex flex-col h-full bg-[#181818] relative">
+        <div className={`md:col-span-8 flex flex-col h-full bg-[#181818] relative ${mobileShowChat ? 'flex' : 'hidden md:flex'}`}>
           
           {/* Chat Room Header */}
-          <div className="p-3.5 px-5 bg-[#141414] border-b border-neutral-800 flex items-center justify-between z-10">
-            <div
-              onClick={() => {
-                if (onOpenProfile) {
-                  onOpenProfile({
-                    name: activeConversation.participantName,
-                    handle: activeConversation.participantHandle,
-                    avatar: activeConversation.participantAvatar
-                  });
-                }
-              }}
-              className="flex items-center gap-3 cursor-pointer group"
-            >
-              <div className="relative">
-                <img
-                  src={activeConversation.participantAvatar}
-                  alt={activeConversation.participantName}
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500 group-hover:scale-105 transition"
-                />
-                {activeConversation.online && (
-                  <span className="w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141414] rounded-full absolute bottom-0 right-0" />
-                )}
-              </div>
+          <div className="p-3.5 px-4 sm:px-5 bg-[#141414] border-b border-neutral-800 flex items-center justify-between z-10">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setMobileShowChat(false)}
+                className="md:hidden p-2 -ml-1 hover:bg-neutral-800 rounded-xl text-neutral-400 hover:text-white transition"
+                title="Back to conversations list"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
 
-              <div>
-                <h3 className="font-black text-white text-sm group-hover:text-emerald-400 transition flex items-center gap-1.5">
-                  <span>{activeConversation.participantName}</span>
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                </h3>
-                <p className="text-[11px] text-neutral-400 font-semibold">
-                  {activeConversation.participantHandle} • {activeConversation.online ? 'Active Now' : 'Offline'}
-                </p>
+              <div
+                onClick={() => {
+                  if (onOpenProfile) {
+                    onOpenProfile({
+                      name: activeConversation.participantName,
+                      handle: activeConversation.participantHandle,
+                      avatar: activeConversation.participantAvatar
+                    });
+                  }
+                }}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <div className="relative">
+                  <img
+                    src={activeConversation.participantAvatar}
+                    alt={activeConversation.participantName}
+                    className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500 group-hover:scale-105 transition"
+                  />
+                  {activeConversation.online && (
+                    <span className="w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141414] rounded-full absolute bottom-0 right-0" />
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="font-black text-white text-sm group-hover:text-emerald-400 transition flex items-center gap-1.5">
+                    <span>{activeConversation.participantName}</span>
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  </h3>
+                  <p className="text-[11px] text-neutral-400 font-semibold">
+                    {activeConversation.participantHandle} • {activeConversation.online ? 'Active Now' : 'Offline'}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -1025,33 +1053,6 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                 title="Scroll Down Messages"
               >
                 <ArrowDown className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Floating Scroll Up / Scroll Down Quick Navigation Bar */}
-          <div className="sticky bottom-2 right-4 flex justify-end gap-2 px-4 z-20 pointer-events-none">
-            <div className="flex items-center gap-1 bg-[#181818]/95 backdrop-blur-md p-1 rounded-2xl border border-neutral-700/80 shadow-2xl pointer-events-auto">
-              <button
-                type="button"
-                onClick={scrollToTop}
-                className="p-1.5 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-400 rounded-xl transition flex items-center gap-1 text-[10px] font-black"
-                title="Scroll Up to Top"
-              >
-                <ArrowUp className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">Top</span>
-              </button>
-
-              <div className="w-[1px] h-3.5 bg-neutral-800" />
-
-              <button
-                type="button"
-                onClick={() => scrollToBottom(true)}
-                className="p-1.5 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-400 rounded-xl transition flex items-center gap-1 text-[10px] font-black"
-                title="Scroll Down to Latest"
-              >
-                <ArrowDown className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">Latest</span>
               </button>
             </div>
           </div>
