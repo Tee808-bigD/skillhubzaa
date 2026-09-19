@@ -70,6 +70,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
 
   // 3-Dot Options & Modals State
   const [openMenuPostId, setOpenMenuPostId] = useState<string | null>(null);
+  const [postToDelete, setPostToDelete] = useState<SocialPost | null>(null);
   const [unfollowedUsers, setUnfollowedUsers] = useState<string[]>([]);
   const [favoritedPostIds, setFavoritedPostIds] = useState<string[]>([]);
   const [aboutAccountModalPost, setAboutAccountModalPost] = useState<SocialPost | null>(null);
@@ -504,12 +505,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
                             <button
                               onClick={() => {
                                 setOpenMenuPostId(null);
-                                if (window.confirm('Are you sure you want to delete this post?')) {
-                                  if (onDeletePost) {
-                                    onDeletePost(post.id);
-                                  }
-                                  showToast('Post deleted successfully');
-                                }
+                                setPostToDelete(post);
                               }}
                               className="w-full px-4 py-2.5 text-left text-rose-500 hover:bg-neutral-800/80 font-bold flex items-center justify-between transition"
                             >
@@ -1145,6 +1141,43 @@ export const FeedView: React.FC<FeedViewProps> = ({
               >
                 <Copy className="w-6 h-6 text-emerald-400" />
                 <span>Copy Link</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {postToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#1e1e1e] border border-neutral-800 rounded-3xl max-w-sm w-full p-6 text-white space-y-4 animate-in zoom-in-95 duration-150 shadow-2xl">
+            <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center justify-center text-rose-500 mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="font-extrabold text-base text-white">Delete Post?</h3>
+              <p className="text-xs text-neutral-400">This action cannot be undone. This post will be permanently removed from your feed.</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setPostToDelete(null)}
+                className="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeletePost) {
+                    onDeletePost(postToDelete.id);
+                  }
+                  setPostToDelete(null);
+                  showToast('Post deleted successfully');
+                }}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md transition"
+              >
+                Delete
               </button>
             </div>
           </div>

@@ -228,6 +228,7 @@ export default function App() {
 
   const handleDeletePost = (postId: string) => {
     setSocialPosts(prev => prev.filter(p => p.id !== postId));
+    setSavedPostIds(prev => prev.filter(id => id !== postId));
   };
 
   const handleDeleteService = (serviceId: string) => {
