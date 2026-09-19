@@ -31,6 +31,7 @@ interface ReelsViewProps {
   onAddSocialPost: (post: SocialPost) => void;
   onSendMessage: (conversationId: string, text: string) => void;
   onNavigateView: (view: any) => void;
+  onOpenProfile?: (user: Partial<User>) => void;
 }
 
 interface CommentItem {
@@ -49,7 +50,8 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
   onAddReel,
   onAddSocialPost,
   onSendMessage,
-  onNavigateView
+  onNavigateView,
+  onOpenProfile
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
@@ -548,8 +550,22 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
 
               <button
                 onClick={() => {
+                  const creatorToView = {
+                    id: (viewingCreatorProfile as any).id || `user_${viewingCreatorProfile.name.toLowerCase().replace(/\s+/g, '_')}`,
+                    name: viewingCreatorProfile.name,
+                    handle: viewingCreatorProfile.handle,
+                    avatar: viewingCreatorProfile.avatar,
+                    bio: viewingCreatorProfile.bio,
+                    location: viewingCreatorProfile.location,
+                    role: (viewingCreatorProfile.role?.includes('Mentor') ? 'mentor' : 'youth') as any,
+                    badge: viewingCreatorProfile.role
+                  };
                   setViewingCreatorProfile(null);
-                  onNavigateView('profile');
+                  if (onOpenProfile) {
+                    onOpenProfile(creatorToView);
+                  } else {
+                    onNavigateView('profile');
+                  }
                 }}
                 className="w-full py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs rounded-xl transition"
               >

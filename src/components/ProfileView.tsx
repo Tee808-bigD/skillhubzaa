@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { User, Course, Learnership, YouthService, SocialPost } from '../types';
-import { Edit3, CheckCircle2, ShieldCheck, Award, BookOpen, Briefcase, ShoppingBag, MapPin, Phone, Calendar, Trash2, MessageSquare, ThumbsUp, Send, Bookmark } from 'lucide-react';
+import { Edit3, CheckCircle2, ShieldCheck, Award, BookOpen, Briefcase, ShoppingBag, MapPin, Phone, Calendar, Trash2, MessageSquare, ThumbsUp, Send, Bookmark, ArrowLeft, UserPlus, UserCheck } from 'lucide-react';
 
 interface ProfileViewProps {
   currentUser: User;
+  viewedUser?: User | null;
   onUpdateUser: (user: User) => void;
   enrolledCourses: Course[];
   savedLearnerships: Learnership[];
@@ -14,10 +15,13 @@ interface ProfileViewProps {
   onDeleteService?: (serviceId: string) => void;
   onToggleBookmarkPost?: (postId: string) => void;
   onNavigateView: (view: any) => void;
+  onOpenDirectChat?: (participantName: string) => void;
+  onBackToOwnProfile?: () => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   currentUser,
+  viewedUser,
   onUpdateUser,
   enrolledCourses,
   savedLearnerships,
@@ -27,13 +31,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onDeletePost,
   onDeleteService,
   onToggleBookmarkPost,
-  onNavigateView
+  onNavigateView,
+  onOpenDirectChat,
+  onBackToOwnProfile
 }) => {
+  const isOwnProfile = !viewedUser || viewedUser.id === currentUser.id || viewedUser.name === currentUser.name;
+  const targetUser = isOwnProfile ? currentUser : viewedUser!;
+
   const [activeTab, setActiveTab] = useState<'my_posts' | 'saved_posts' | 'courses' | 'saved_learnerships' | 'my_services'>('my_posts');
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(currentUser.name);
-  const [bio, setBio] = useState(currentUser.bio || '');
-  const [skills, setSkills] = useState(currentUser.skills.join(', '));
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [name, setName] = useState(targetUser.name);
+  const [bio, setBio] = useState(targetUser.bio || '');
+  const [skills, setSkills] = useState(targetUser.skills.join(', '));
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +59,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   return (
     <div className="space-y-6">
       
+      {/* Back Banner when viewing someone else's profile */}
+      {!isOwnProfile && (
+        <div className="flex items-center justify-between bg-[#1e1e1e] border border-neutral-800 p-4 rounded-3xl shadow-xl">
+          <button
+            onClick={onBackToOwnProfile}
+            className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 text-emerald-400" />
+            <span>Back to My Profile</span>
+          </button>
+          <span className="text-xs font-bold text-neutral-300">
+            Viewing <span className="text-emerald-400">{targetUser.name}</span>'s Profile
+          </span>
+        </div>
+      )}
+
       {/* Profile Header Card */}
       <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-2xs">
         {/* Banner */}
@@ -57,18 +83,43 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="p-6 pt-0 relative">
           <div className="flex justify-between items-end -mt-12 mb-4">
             <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
+              src={targetUser.avatar}
+              alt={targetUser.name}
               className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-md bg-white ring-2 ring-emerald-500/30"
             />
 
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl font-bold text-xs text-slate-700 hover:bg-slate-50 transition-all"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>{isEditing ? 'Cancel Editing' : 'Edit Profile'}</span>
-            </button>
+            {isOwnProfile ? (
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl font-bold text-xs text-slate-700 hover:bg-slate-50 transition-all"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>{isEditing ? 'Cancel Editing' : 'Edit Profile'}</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                {onOpenDirectChat && (
+                  <button
+                    onClick={() => onOpenDirectChat(targetUser.name)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Message</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsFollowing(!isFollowing)}
+                  className={`flex items-center gap-1.5 px-4 py-2 border rounded-xl font-extrabold text-xs transition-all ${
+                    isFollowing
+                      ? 'bg-slate-100 text-slate-700 border-slate-300'
+                      : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
+                  }`}
+                >
+                  {isFollowing ? <UserCheck className="w-3.5 h-3.5 text-emerald-600" /> : <UserPlus className="w-3.5 h-3.5" />}
+                  <span>{isFollowing ? 'Following' : 'Follow'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {isEditing ? (
@@ -113,8 +164,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           ) : (
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold text-slate-900">{currentUser.name}</h1>
-                {currentUser.setaVerified && (
+                <h1 className="text-xl font-extrabold text-slate-900">{targetUser.name}</h1>
+                {targetUser.setaVerified && (
                   <span className="bg-emerald-50 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     Verified SETA Youth
@@ -122,12 +173,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 )}
               </div>
 
-              <p className="text-xs text-slate-500 font-semibold mt-0.5">{currentUser.handle} • {currentUser.location}</p>
-              <p className="text-xs text-slate-700 mt-2 leading-relaxed max-w-2xl font-medium">{currentUser.bio}</p>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">{targetUser.handle} • {targetUser.location}</p>
+              <p className="text-xs text-slate-700 mt-2 leading-relaxed max-w-2xl font-medium">{targetUser.bio}</p>
 
               {/* Skills Badges */}
               <div className="flex flex-wrap gap-1.5 mt-3">
-                {currentUser.skills.map(skill => (
+                {targetUser.skills.map(skill => (
                   <span key={skill} className="text-[10px] font-extrabold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200/80">
                     {skill}
                   </span>
@@ -137,12 +188,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {/* Stats Bar */}
               <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-100 text-center">
                 <div className="p-2.5 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="font-black text-slate-900 text-base">{enrolledCourses.length}</div>
-                  <div className="text-[10px] text-slate-500 font-bold uppercase">Enrolled Courses</div>
+                  <div className="font-black text-slate-900 text-base">{userPosts.length}</div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">Public Posts</div>
                 </div>
 
                 <div className="p-2.5 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="font-black text-slate-900 text-base">{currentUser.certificatesCount}</div>
+                  <div className="font-black text-slate-900 text-base">{targetUser.certificatesCount || 2}</div>
                   <div className="text-[10px] text-slate-500 font-bold uppercase">Digital Certificates</div>
                 </div>
 
@@ -165,38 +216,44 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             }`}
           >
             <MessageSquare className="w-4 h-4" />
-            My Posts & Activity ({userPosts.length})
+            {isOwnProfile ? 'My Posts & Activity' : `${targetUser.name}'s Posts`} ({userPosts.length})
           </button>
 
-          <button
-            onClick={() => setActiveTab('saved_posts')}
-            className={`py-3 px-4 border-b-2 transition-all flex items-center gap-2 shrink-0 ${
-              activeTab === 'saved_posts' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Bookmark className="w-4 h-4" />
-            Saved Posts ({savedPosts.length})
-          </button>
+          {isOwnProfile && (
+            <button
+              onClick={() => setActiveTab('saved_posts')}
+              className={`py-3 px-4 border-b-2 transition-all flex items-center gap-2 shrink-0 ${
+                activeTab === 'saved_posts' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Bookmark className="w-4 h-4" />
+              Saved Posts ({savedPosts.length})
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab('courses')}
-            className={`py-3 px-4 border-b-2 transition-all flex items-center gap-2 shrink-0 ${
-              activeTab === 'courses' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            My Courses ({enrolledCourses.length})
-          </button>
+          {isOwnProfile && (
+            <button
+              onClick={() => setActiveTab('courses')}
+              className={`py-3 px-4 border-b-2 transition-all flex items-center gap-2 shrink-0 ${
+                activeTab === 'courses' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              My Courses ({enrolledCourses.length})
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab('saved_learnerships')}
-            className={`py-3 px-4 border-b-2 transition-all flex items-center gap-2 shrink-0 ${
-              activeTab === 'saved_learnerships' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Briefcase className="w-4 h-4" />
-            Saved Learnerships ({savedLearnerships.length})
-          </button>
+          {isOwnProfile && (
+            <button
+              onClick={() => setActiveTab('saved_learnerships')}
+              className={`py-3 px-4 border-b-2 transition-all flex items-center gap-2 shrink-0 ${
+                activeTab === 'saved_learnerships' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              Saved Learnerships ({savedLearnerships.length})
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('my_services')}
@@ -205,7 +262,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            My Services ({userServices.length})
+            {isOwnProfile ? 'My Services' : `${targetUser.name}'s Services`} ({userServices.length})
           </button>
         </div>
 

@@ -46,6 +46,7 @@ interface FeedViewProps {
   onSelectView: (view: any) => void;
   onOpenCreateEvent: () => void;
   onSelectEvent?: (event: CommunityEvent) => void;
+  onOpenProfile?: (user: Partial<User>) => void;
 }
 
 export const FeedView: React.FC<FeedViewProps> = ({
@@ -61,7 +62,8 @@ export const FeedView: React.FC<FeedViewProps> = ({
   onOpenDirectChat,
   onSelectView,
   onOpenCreateEvent,
-  onSelectEvent
+  onSelectEvent,
+  onOpenProfile
 }) => {
   const [composerText, setComposerText] = useState('');
   const [composerMediaUrl, setComposerMediaUrl] = useState('');
@@ -357,21 +359,37 @@ export const FeedView: React.FC<FeedViewProps> = ({
               
               {/* Header */}
               <div className="p-4 sm:p-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    if (onOpenProfile) {
+                      onOpenProfile({
+                        id: post.authorId,
+                        name: post.authorName,
+                        handle: post.authorHandle,
+                        avatar: post.authorAvatar,
+                        location: post.authorLocation
+                      });
+                    } else {
+                      onSelectView('profile');
+                    }
+                  }}
+                  className="flex items-center gap-3 text-left group hover:opacity-90 transition cursor-pointer"
+                  title={`View ${post.authorName}'s profile`}
+                >
                   <img
                     src={post.authorAvatar}
                     alt={post.authorName}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/30"
+                    className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/30 group-hover:scale-105 transition"
                   />
                   <div>
-                    <h3 className="font-extrabold text-sm text-white leading-none">{post.authorName}</h3>
+                    <h3 className="font-extrabold text-sm text-white leading-none group-hover:text-emerald-400 transition">{post.authorName}</h3>
                     <div className="flex items-center gap-2 text-[11px] text-neutral-400 font-medium mt-1">
                       <span>{post.createdAt}</span>
                       <span>•</span>
                       <span>{post.authorLocation}</span>
                     </div>
                   </div>
-                </div>
+                </button>
 
                 {/* 3-Dot Options Menu */}
                 <div className="relative">

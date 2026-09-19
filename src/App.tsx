@@ -76,7 +76,37 @@ import {
 export default function App() {
   // Navigation State (default to social media feed)
   const [currentView, setCurrentView] = useState<MainView>('feed');
+  const [viewedProfileUser, setViewedProfileUser] = useState<User | null>(null);
   const [selectedProvince, setSelectedProvince] = useState<SouthAfricanProvince>('All South Africa');
+
+  const handleOpenUserProfile = (targetUser?: Partial<User> | null) => {
+    if (!targetUser || targetUser.id === user.id || targetUser.name === user.name) {
+      setViewedProfileUser(null);
+    } else {
+      const fullUser: User = {
+        id: targetUser.id || `user_${Date.now()}`,
+        name: targetUser.name || 'SkillHub Member',
+        handle: targetUser.handle || `@${(targetUser.name || 'member').toLowerCase().replace(/\s+/g, '_')}`,
+        avatar: targetUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+        bio: targetUser.bio || 'Active Community Member in SkillHub ZA.',
+        location: targetUser.location || 'South Africa',
+        province: targetUser.province || 'Gauteng',
+        verified: true,
+        setaVerified: true,
+        role: targetUser.role || 'youth',
+        skills: targetUser.skills || ['Trades & Skills', 'Youth Mentorship'],
+        educationLevel: targetUser.educationLevel || 'Matric / Diploma',
+        enrolledCourseIds: [],
+        savedLearnershipIds: [],
+        savedServiceIds: [],
+        savedResourceIds: [],
+        certificatesCount: 2,
+        badge: targetUser.badge || 'Verified Member'
+      };
+      setViewedProfileUser(fullUser);
+    }
+    setCurrentView('profile');
+  };
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -533,7 +563,10 @@ export default function App() {
       {/* Left Social Navigation Sidebar */}
       <SocialSidebar
         currentView={currentView}
-        onSelectView={setCurrentView}
+        onSelectView={(v) => {
+          if (v === 'profile') setViewedProfileUser(null);
+          setCurrentView(v);
+        }}
         currentUser={user}
         unreadMessagesCount={1}
         unreadNotifsCount={unreadNotifCount}
@@ -562,6 +595,7 @@ export default function App() {
               onSelectView={setCurrentView}
               onOpenCreateEvent={() => setIsCreatePostModalOpen(true)}
               onSelectEvent={setSelectedEventModal}
+              onOpenProfile={handleOpenUserProfile}
             />
           )}
 
@@ -576,6 +610,7 @@ export default function App() {
               onAddSocialPost={handleAddSocialPost}
               onSendMessage={handleSendMessage}
               onNavigateView={setCurrentView}
+              onOpenProfile={handleOpenUserProfile}
             />
           )}
 
@@ -749,16 +784,19 @@ export default function App() {
           {currentView === 'profile' && (
             <ProfileView
               currentUser={user}
+              viewedUser={viewedProfileUser}
               onUpdateUser={setUser}
-              enrolledCourses={courses.filter(c => user.enrolledCourseIds.includes(c.id))}
-              savedLearnerships={learnerships.filter(l => user.savedLearnershipIds.includes(l.id))}
-              userServices={services.filter(s => s.providerId === user.id)}
-              userPosts={socialPosts.filter(p => p.authorId === user.id || p.authorName === user.name)}
-              savedPosts={socialPosts.filter(p => savedPostIds.includes(p.id))}
+              enrolledCourses={courses.filter(c => (viewedProfileUser || user).enrolledCourseIds?.includes(c.id))}
+              savedLearnerships={learnerships.filter(l => (viewedProfileUser || user).savedLearnershipIds?.includes(l.id))}
+              userServices={services.filter(s => s.providerName === (viewedProfileUser || user).name || s.providerId === (viewedProfileUser || user).id)}
+              userPosts={socialPosts.filter(p => p.authorName === (viewedProfileUser || user).name || p.authorHandle === (viewedProfileUser || user).handle || p.authorId === (viewedProfileUser || user).id)}
+              savedPosts={!viewedProfileUser ? socialPosts.filter(p => savedPostIds.includes(p.id)) : []}
               onDeletePost={handleDeletePost}
               onDeleteService={handleDeleteService}
               onToggleBookmarkPost={handleToggleBookmarkPost}
               onNavigateView={setCurrentView}
+              onOpenDirectChat={handleOpenDirectChat}
+              onBackToOwnProfile={() => setViewedProfileUser(null)}
             />
           )}
 
