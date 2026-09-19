@@ -556,6 +556,7 @@ export default function App() {
               onAddPost={handleAddSocialPost}
               onAddStory={handleAddStory}
               onToggleBookmarkPost={handleToggleBookmarkPost}
+              onDeletePost={handleDeletePost}
               onOpenDirectChat={handleOpenDirectChat}
               onSelectView={setCurrentView}
               onOpenCreateEvent={() => setIsCreatePostModalOpen(true)}
