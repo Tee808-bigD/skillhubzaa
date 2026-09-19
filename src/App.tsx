@@ -637,6 +637,7 @@ export default function App() {
               currentUser={user}
               onSendMessage={handleSendMessage}
               activeChatParticipantName={activeChatParticipantName}
+              onOpenProfile={handleOpenUserProfile}
             />
           )}
 
