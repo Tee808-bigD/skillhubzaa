@@ -1,6 +1,6 @@
 {
   "name": "SkillHub ZA",
   "description": "Social skill-sharing platform where creators share stories, short reel videos, direct messages, community events, and freelance services.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

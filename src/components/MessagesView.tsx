@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChatConversation, ChatMessage, User } from '../types';
 import { 
   Send, 
@@ -24,7 +24,13 @@ import {
   X,
   Share2,
   RotateCw,
-  Sparkles
+  Sparkles,
+  FileText,
+  FileSpreadsheet,
+  Download,
+  ArrowUp,
+  ArrowDown,
+  Camera
 } from 'lucide-react';
 
 interface MessagesViewProps {
@@ -98,7 +104,20 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
   const [isVideoCallActive, setIsVideoCallActive] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
-  
+
+  // Permission Request Modal State
+  const [callPermissionModal, setCallPermissionModal] = useState<{
+    isOpen: boolean;
+    mode: 'voice' | 'video';
+  } | null>(null);
+  const [allowCamPermission, setAllowCamPermission] = useState(true);
+  const [allowMicPermission, setAllowMicPermission] = useState(true);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
   // Call Controls State
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
@@ -114,6 +133,34 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const activeConversation = conversations.find(c => c.id === selectedChatId) || conversations[0];
+
+  // Scroll Helpers
+  const scrollToBottom = (smooth = true) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    }
+  };
+
+  const scrollToTop = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Scroll to bottom when conversation changes or new messages arrive
+  useEffect(() => {
+    scrollToBottom(false);
+  }, [selectedChatId]);
+
+  const currentChatMessages = localMessagesOverride[activeConversation?.id] || activeConversation?.messages || [];
+
+  const filteredMessages = inChatSearchQuery.trim()
+    ? currentChatMessages.filter(m => m.text.toLowerCase().includes(inChatSearchQuery.toLowerCase()))
+    : currentChatMessages;
+
+  useEffect(() => {
+    scrollToBottom(true);
+  }, [filteredMessages.length]);
 
   // Call timer effect
   useEffect(() => {
@@ -139,6 +186,47 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const handleStartCallRequest = (mode: 'voice' | 'video') => {
+    setCallPermissionModal({ isOpen: true, mode });
+  };
+
+  const handleConfirmCallPermission = async () => {
+    if (!callPermissionModal) return;
+    const mode = callPermissionModal.mode;
+    
+    // Attempt real navigator media permission if available
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: mode === 'video' && allowCamPermission,
+          audio: allowMicPermission
+        });
+        setMediaStream(stream);
+      }
+    } catch (err) {
+      console.warn("Media permissions prompt handled by iframe environment:", err);
+    }
+
+    if (mode === 'video') {
+      setIsVideoCallActive(true);
+      showToast('Video call initialized with Camera & Mic');
+    } else {
+      setIsVoiceCallActive(true);
+      showToast('Voice call initialized with Microphone');
+    }
+
+    setCallPermissionModal(null);
+  };
+
+  const handleEndCall = () => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      setMediaStream(null);
+    }
+    setIsVoiceCallActive(false);
+    setIsVideoCallActive(false);
+  };
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || !activeConversation || isUserBlocked) return;
@@ -151,12 +239,6 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const handleEmojiClick = (emoji: string) => {
     setMessageInput(prev => prev + emoji);
   };
-
-  const currentChatMessages = localMessagesOverride[activeConversation?.id] || activeConversation?.messages || [];
-
-  const filteredMessages = inChatSearchQuery.trim()
-    ? currentChatMessages.filter(m => m.text.toLowerCase().includes(inChatSearchQuery.toLowerCase()))
-    : currentChatMessages;
 
   const handleClearHistory = () => {
     if (!activeConversation) return;
@@ -180,6 +262,58 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     showToast(isMutedNotifications ? 'Notifications unmuted for this chat' : 'Notifications muted for this chat');
   };
 
+  // CSV & TXT Export Handler
+  const handleExportChat = (format: 'txt' | 'csv') => {
+    if (!activeConversation) return;
+    setIsMoreMenuOpen(false);
+    
+    const participant = activeConversation.participantName;
+    const handle = activeConversation.participantHandle;
+    const dateStr = new Date().toISOString().split('T')[0];
+    
+    let content = '';
+    let filename = '';
+    let mimeType = '';
+
+    if (format === 'txt') {
+      filename = `SkillHub_Chat_${participant.replace(/\s+/g, '_')}_${dateStr}.txt`;
+      mimeType = 'text/plain;charset=utf-8';
+      content = `==========================================================\n`;
+      content += `SKILLHUB ZA - DIRECT MESSAGE TRANSCRIPT EXPORT\n`;
+      content += `Chat Participant: ${participant} (${handle})\n`;
+      content += `Export Date: ${new Date().toLocaleString()}\n`;
+      content += `Total Messages: ${filteredMessages.length}\n`;
+      content += `==========================================================\n\n`;
+      
+      filteredMessages.forEach(m => {
+        const sender = m.isMe ? 'You' : participant;
+        content += `[${m.timestamp}] ${sender}: ${m.text}\n`;
+      });
+    } else {
+      filename = `SkillHub_Chat_${participant.replace(/\s+/g, '_')}_${dateStr}.csv`;
+      mimeType = 'text/csv;charset=utf-8';
+      content = `"Timestamp","Sender","IsMe","Message"\n`;
+      
+      filteredMessages.forEach(m => {
+        const sender = m.isMe ? 'You' : participant;
+        const safeText = m.text.replace(/"/g, '""');
+        content += `"${m.timestamp}","${sender}","${m.isMe}","${safeText}"\n`;
+      });
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`Downloaded chat as ${format.toUpperCase()}`);
+  };
+
   const filteredConversations = conversations.filter(c =>
     c.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.participantHandle.toLowerCase().includes(searchQuery.toLowerCase())
@@ -196,6 +330,72 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
         </div>
       )}
 
+      {/* Permission Request Modal for Camera & Mic */}
+      {callPermissionModal && activeConversation && (
+        <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#181818] border border-neutral-700 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 text-white">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
+                <Camera className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg text-white">Media Permissions Required</h3>
+                <p className="text-xs text-neutral-400 font-medium">SkillHub ZA Live Communication</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-300 leading-relaxed font-medium bg-neutral-900/80 p-3.5 rounded-2xl border border-neutral-800">
+              SkillHub ZA requires permission to open your <span className="text-emerald-400 font-bold">Camera</span> and <span className="text-emerald-400 font-bold">Microphone</span> to start live {callPermissionModal.mode === 'video' ? 'video' : 'voice'} chatting with <strong className="text-white">{activeConversation.participantName}</strong>.
+            </p>
+
+            <div className="space-y-3 bg-[#222] p-4 rounded-2xl border border-neutral-800">
+              <label className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-emerald-400" />
+                  <span>Enable Camera Access</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={allowCamPermission}
+                  onChange={(e) => setAllowCamPermission(e.target.checked)}
+                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-emerald-400" />
+                  <span>Enable Microphone Access</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={allowMicPermission}
+                  onChange={(e) => setAllowMicPermission(e.target.checked)}
+                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCallPermissionModal(null)}
+                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold rounded-2xl text-xs transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCallPermission}
+                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-2xl text-xs transition shadow-lg flex items-center justify-center gap-2"
+              >
+                <span>Allow & Start Call</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Voice Call Overlay Modal */}
       {isVoiceCallActive && activeConversation && (
         <div className="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-between p-8 text-white animate-in fade-in duration-200">
@@ -204,7 +404,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               Voice Call Connected
             </span>
             <h2 className="text-2xl font-black text-white">{activeConversation.participantName}</h2>
-            <p className="text-xs font-semibold text-neutral-400">{formatCallTime(callDuration)} • HD Audio Encrypted</p>
+            <p className="text-xs font-semibold text-neutral-400">{formatCallTime(callDuration)} • HD Audio Stream</p>
           </div>
 
           {/* Audio Visualizer Stage */}
@@ -249,7 +449,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             </button>
 
             <button
-              onClick={() => setIsVoiceCallActive(false)}
+              onClick={handleEndCall}
               className="p-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg transform active:scale-95"
               title="End Call"
             >
@@ -298,57 +498,56 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             )}
 
             {/* Corner Self Camera PIP Preview */}
-            <div className="absolute bottom-24 right-6 w-32 h-44 bg-neutral-900 rounded-2xl border-2 border-emerald-500 overflow-hidden shadow-2xl">
+            <div className="absolute bottom-20 right-6 w-32 h-44 bg-neutral-900 rounded-2xl border-2 border-emerald-500 overflow-hidden shadow-2xl z-20">
               <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
+                src={currentUser.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"}
+                alt="You"
                 className="w-full h-full object-cover"
               />
-              <span className="absolute bottom-2 left-2 text-[10px] font-black bg-black/60 text-white px-2 py-0.5 rounded-md">
+              <span className="absolute bottom-1 left-1 bg-black/60 text-[9px] font-extrabold text-white px-1.5 py-0.5 rounded">
                 You
               </span>
             </div>
 
-            {/* Top Bar Overlay */}
-            <div className="absolute top-6 left-6 right-6 flex items-center justify-between text-white bg-black/40 backdrop-blur-md p-3 rounded-2xl border border-white/10">
-              <div className="flex items-center gap-3">
-                <span className="w-3 h-3 bg-rose-500 rounded-full animate-ping" />
-                <span className="text-xs font-black tracking-wider uppercase">Live Video Call</span>
-                <span className="text-xs font-semibold text-neutral-300">• {formatCallTime(callDuration)}</span>
+            {/* Video Call Header Bar */}
+            <div className="absolute top-4 left-6 right-6 flex items-center justify-between z-20">
+              <div className="bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-neutral-800 text-white flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                <span className="text-xs font-extrabold uppercase tracking-wider">Live Video Call</span>
+                <span className="text-neutral-400 text-xs font-mono">• {formatCallTime(callDuration)}</span>
               </div>
+
               <button
-                onClick={() => setIsVideoCallActive(false)}
-                className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded-xl"
+                onClick={handleEndCall}
+                className="p-2.5 bg-neutral-900/80 hover:bg-rose-600 text-white rounded-2xl border border-neutral-800 transition"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Bottom Controls Bar */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-neutral-900/90 p-3.5 rounded-3xl border border-neutral-800 shadow-2xl backdrop-blur-xl">
+            {/* Video Call Controls Footer */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-slate-900/90 backdrop-blur-xl p-3 rounded-3xl border border-neutral-800 shadow-2xl z-20">
               <button
                 onClick={() => setIsMicMuted(!isMicMuted)}
-                className={`p-3.5 rounded-2xl transition-all ${
+                className={`p-3.5 rounded-2xl transition ${
                   isMicMuted ? 'bg-rose-500 text-white' : 'bg-neutral-800 text-neutral-300 hover:text-white'
                 }`}
-                title="Mute Microphone"
               >
                 {isMicMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </button>
 
               <button
                 onClick={() => setIsCamOff(!isCamOff)}
-                className={`p-3.5 rounded-2xl transition-all ${
+                className={`p-3.5 rounded-2xl transition ${
                   isCamOff ? 'bg-rose-500 text-white' : 'bg-neutral-800 text-neutral-300 hover:text-white'
                 }`}
-                title="Toggle Camera"
               >
                 {isCamOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
               </button>
 
               <button
-                onClick={() => showToast('Switched to front/back camera')}
-                className="p-3.5 rounded-2xl bg-neutral-800 text-neutral-300 hover:text-white transition-all"
+                onClick={() => showToast('Switched camera angle')}
+                className="p-3.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-2xl transition"
                 title="Rotate Camera"
               >
                 <RotateCw className="w-5 h-5" />
@@ -356,27 +555,25 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
               <button
                 onClick={() => showToast('Screen sharing activated')}
-                className="p-3.5 rounded-2xl bg-neutral-800 text-neutral-300 hover:text-white transition-all"
+                className="p-3.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-2xl transition"
                 title="Share Screen"
               >
                 <Share2 className="w-5 h-5" />
               </button>
 
               <button
-                onClick={() => setIsVideoCallActive(false)}
-                className="p-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg transform active:scale-95"
+                onClick={handleEndCall}
+                className="p-3.5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl transition shadow-lg"
                 title="End Call"
               >
                 <PhoneOff className="w-5 h-5" />
               </button>
             </div>
-
           </div>
-
         </div>
       )}
-      
-      {/* Left Conversations Sidebar (4 cols) */}
+
+      {/* Left Sidebar: Direct Message Conversations List */}
       <div className="md:col-span-4 border-r border-neutral-800 flex flex-col bg-[#141414]">
         
         {/* Header & Search */}
@@ -410,36 +607,34 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                 key={chat.id}
                 onClick={() => {
                   setSelectedChatId(chat.id);
-                  setInChatSearchOpen(false);
                   setInChatSearchQuery('');
+                  setInChatSearchOpen(false);
                 }}
-                className={`w-full p-4 flex items-center gap-3 transition-all text-left ${
-                  isSelected ? 'bg-neutral-800/80 border-l-4 border-emerald-500' : 'hover:bg-neutral-800/30'
+                className={`w-full p-3.5 flex items-center gap-3 transition text-left ${
+                  isSelected ? 'bg-emerald-500/10 border-l-4 border-emerald-500' : 'hover:bg-neutral-800/40'
                 }`}
               >
-                <div className="relative">
+                <div className="relative shrink-0">
                   <img
                     src={chat.participantAvatar}
                     alt={chat.participantName}
-                    className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500/30"
+                    className="w-11 h-11 rounded-full object-cover ring-2 ring-neutral-700"
                   />
                   {chat.online && (
-                    <span className="w-3.5 h-3.5 bg-emerald-500 border-2 border-[#141414] rounded-full absolute bottom-0 right-0" />
+                    <span className="w-3 h-3 bg-emerald-500 border-2 border-[#141414] rounded-full absolute bottom-0 right-0" />
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-extrabold text-sm text-white truncate">{chat.participantName}</h4>
-                    <span className="text-[10px] text-neutral-400 font-semibold">{chat.lastMessageTime}</span>
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <h3 className="font-extrabold text-white text-xs truncate">{chat.participantName}</h3>
+                    <span className="text-[10px] text-neutral-400 font-semibold shrink-0">{chat.lastMessageTime}</span>
                   </div>
-                  <p className="text-xs text-neutral-400 truncate mt-0.5 font-medium">
-                    {chat.lastMessage}
-                  </p>
+                  <p className="text-xs text-neutral-400 truncate font-medium">{chat.lastMessage}</p>
                 </div>
 
                 {chat.unreadCount > 0 && (
-                  <span className="w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shrink-0">
+                  <span className="bg-emerald-500 text-slate-950 font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center shrink-0">
                     {chat.unreadCount}
                   </span>
                 )}
@@ -447,16 +642,15 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             );
           })}
         </div>
-
       </div>
 
-      {/* Right Chat Panel (8 cols) */}
+      {/* Right Column: Active Conversation Area */}
       {activeConversation ? (
-        <div className="md:col-span-8 flex flex-col bg-[#1e1e1e] h-full relative">
+        <div className="md:col-span-8 flex flex-col h-full bg-[#181818] relative">
           
-          {/* Active Chat Header */}
-          <div className="p-4 bg-[#141414] border-b border-neutral-800 flex items-center justify-between z-20 relative">
-            <button
+          {/* Chat Room Header */}
+          <div className="p-3.5 px-5 bg-[#141414] border-b border-neutral-800 flex items-center justify-between z-10">
+            <div
               onClick={() => {
                 if (onOpenProfile) {
                   onOpenProfile({
@@ -466,44 +660,43 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                   });
                 }
               }}
-              className="flex items-center gap-3 text-left hover:opacity-90 transition group cursor-pointer"
-              title="Click to view profile"
+              className="flex items-center gap-3 cursor-pointer group"
             >
               <div className="relative">
                 <img
                   src={activeConversation.participantAvatar}
                   alt={activeConversation.participantName}
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/30 group-hover:scale-105 transition"
+                  className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500 group-hover:scale-105 transition"
                 />
                 {activeConversation.online && (
-                  <span className="w-3 h-3 bg-emerald-500 border-2 border-[#141414] rounded-full absolute bottom-0 right-0" />
+                  <span className="w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141414] rounded-full absolute bottom-0 right-0" />
                 )}
               </div>
-              <div>
-                <h3 className="font-extrabold text-sm text-white flex items-center gap-2 group-hover:text-emerald-400 transition">
-                  <span>{activeConversation.participantName}</span>
-                  <span className="text-xs text-neutral-400 font-medium">{activeConversation.participantHandle}</span>
-                </h3>
-                <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-                  {activeConversation.online ? 'Online now' : 'Offline'}
-                  {isMutedNotifications && <BellOff className="w-3 h-3 text-neutral-400 ml-1" />}
-                </span>
-              </div>
-            </button>
 
-            {/* Header Action Buttons: Phone, Video, 3-Dots */}
-            <div className="flex items-center gap-2 text-neutral-400 relative">
+              <div>
+                <h3 className="font-black text-white text-sm group-hover:text-emerald-400 transition flex items-center gap-1.5">
+                  <span>{activeConversation.participantName}</span>
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                </h3>
+                <p className="text-[11px] text-neutral-400 font-semibold">
+                  {activeConversation.participantHandle} • {activeConversation.online ? 'Active Now' : 'Offline'}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Controls */}
+            <div className="flex items-center gap-2 relative">
               <button
-                onClick={() => setIsVoiceCallActive(true)}
-                className="p-2.5 bg-neutral-800/80 hover:bg-neutral-700 hover:text-emerald-400 rounded-xl transition"
+                onClick={() => handleStartCallRequest('voice')}
+                className="p-2.5 bg-neutral-800/80 hover:bg-neutral-700 hover:text-emerald-400 rounded-xl transition text-neutral-300"
                 title="Start Voice Call"
               >
                 <Phone className="w-4 h-4" />
               </button>
 
               <button
-                onClick={() => setIsVideoCallActive(true)}
-                className="p-2.5 bg-neutral-800/80 hover:bg-neutral-700 hover:text-emerald-400 rounded-xl transition"
+                onClick={() => handleStartCallRequest('video')}
+                className="p-2.5 bg-neutral-800/80 hover:bg-neutral-700 hover:text-emerald-400 rounded-xl transition text-neutral-300"
                 title="Start Video Call"
               >
                 <Video className="w-4 h-4" />
@@ -512,7 +705,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               <button
                 onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
                 className={`p-2.5 rounded-xl transition ${
-                  isMoreMenuOpen ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-neutral-800/80 hover:bg-neutral-700 hover:text-white'
+                  isMoreMenuOpen ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-neutral-800/80 hover:bg-neutral-700 hover:text-white text-neutral-300'
                 }`}
                 title="More Options"
               >
@@ -521,7 +714,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
               {/* Working 3-Dots Dropdown Menu */}
               {isMoreMenuOpen && (
-                <div className="absolute top-12 right-0 w-56 bg-[#181818] border border-neutral-700 rounded-2xl shadow-2xl p-2 z-40 text-xs font-semibold text-neutral-200 space-y-1 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute top-12 right-0 w-60 bg-[#181818] border border-neutral-700 rounded-2xl shadow-2xl p-2 z-40 text-xs font-semibold text-neutral-200 space-y-1 animate-in fade-in slide-in-from-top-2">
                   <button
                     onClick={() => {
                       setIsMoreMenuOpen(false);
@@ -556,6 +749,29 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                   >
                     {isMutedNotifications ? <Bell className="w-4 h-4 text-amber-400" /> : <BellOff className="w-4 h-4 text-amber-400" />}
                     <span>{isMutedNotifications ? 'Unmute Notifications' : 'Mute Notifications'}</span>
+                  </button>
+
+                  <div className="border-t border-neutral-800 my-1" />
+
+                  {/* CSV / TXT Data Download Options */}
+                  <div className="px-2 py-1 text-[10px] font-extrabold uppercase text-neutral-400 tracking-wider">
+                    Download Chat History
+                  </div>
+
+                  <button
+                    onClick={() => handleExportChat('txt')}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-emerald-500/10 text-emerald-400 text-left transition"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Export Chat as TXT</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleExportChat('csv')}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-emerald-500/10 text-emerald-400 text-left transition"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>Export Chat as CSV</span>
                   </button>
 
                   <div className="border-t border-neutral-800 my-1" />
@@ -611,8 +827,11 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             </div>
           )}
 
-          {/* Messages Feed */}
-          <div className="flex-1 p-5 overflow-y-auto space-y-4">
+          {/* Messages Feed Container with Scroll Control */}
+          <div 
+            ref={messagesContainerRef}
+            className="flex-1 p-4 overflow-y-auto space-y-2 scroll-smooth relative"
+          >
             {filteredMessages.length === 0 ? (
               <div className="text-center text-neutral-500 text-xs py-10 font-bold">
                 {inChatSearchQuery ? 'No matching messages found' : 'No messages in this chat'}
@@ -621,36 +840,65 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               filteredMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex gap-3 max-w-[80%] ${msg.isMe ? 'ml-auto flex-row-reverse' : ''}`}
+                  className={`flex items-end gap-2 w-full ${msg.isMe ? 'justify-end' : 'justify-start'}`}
                 >
                   {!msg.isMe && (
                     <img
                       src={msg.senderAvatar}
                       alt={msg.senderName}
-                      className="w-8 h-8 rounded-full object-cover shrink-0"
+                      className="w-7 h-7 rounded-full object-cover shrink-0 mb-0.5"
                     />
                   )}
 
-                  <div className={`space-y-1 ${msg.isMe ? 'items-end text-right' : ''}`}>
-                    <div className={`p-3.5 rounded-2xl text-xs sm:text-sm font-medium leading-relaxed shadow-md ${
+                  {/* Compact Snug Message Block without oversized gaps */}
+                  <div className={`max-w-[85%] sm:max-w-[70%] ${msg.isMe ? 'text-right' : 'text-left'}`}>
+                    <div className={`inline-block px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-medium leading-normal shadow-sm ${
                       msg.isMe
-                        ? 'bg-emerald-500 text-slate-950 font-semibold rounded-tr-none'
-                        : 'bg-[#282828] text-white border border-neutral-700/80 rounded-tl-none'
+                        ? 'bg-emerald-500 text-slate-950 font-semibold rounded-br-xs'
+                        : 'bg-[#262626] text-white border border-neutral-700/60 rounded-bl-xs'
                     }`}>
-                      {msg.text}
-                    </div>
-
-                    <div className={`flex items-center gap-1 text-[10px] text-neutral-400 font-semibold px-1 ${
-                      msg.isMe ? 'justify-end' : ''
-                    }`}>
-                      <span>{msg.timestamp}</span>
-                      {msg.isMe && <CheckCheck className="w-3 h-3 text-emerald-400" />}
+                      <p className="whitespace-pre-wrap break-words leading-snug">{msg.text}</p>
+                      
+                      <div className={`flex items-center gap-1 text-[10px] font-bold mt-1 ${
+                        msg.isMe ? 'justify-end text-slate-950/80' : 'justify-start text-neutral-400'
+                      }`}>
+                        <span>{msg.timestamp}</span>
+                        {msg.isMe && <CheckCheck className="w-3.5 h-3.5 text-slate-950" />}
+                      </div>
                     </div>
                   </div>
 
                 </div>
               ))
             )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Floating Scroll Up / Scroll Down Quick Navigation Bar */}
+          <div className="sticky bottom-2 right-4 flex justify-end gap-2 px-4 z-20 pointer-events-none">
+            <div className="flex items-center gap-1 bg-[#181818]/95 backdrop-blur-md p-1 rounded-2xl border border-neutral-700/80 shadow-2xl pointer-events-auto">
+              <button
+                type="button"
+                onClick={scrollToTop}
+                className="p-1.5 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-400 rounded-xl transition flex items-center gap-1 text-[10px] font-black"
+                title="Scroll Up to Top"
+              >
+                <ArrowUp className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Top</span>
+              </button>
+
+              <div className="w-[1px] h-3.5 bg-neutral-800" />
+
+              <button
+                type="button"
+                onClick={() => scrollToBottom(true)}
+                className="p-1.5 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-400 rounded-xl transition flex items-center gap-1 text-[10px] font-black"
+                title="Scroll Down to Latest"
+              >
+                <ArrowDown className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Latest</span>
+              </button>
+            </div>
           </div>
 
           {/* Custom Unique Lifestyle Emoji Picker Popover */}
@@ -704,7 +952,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
           )}
 
           {/* Message Input Box */}
-          <form onSubmit={handleSend} className="p-4 bg-[#141414] border-t border-neutral-800 z-20">
+          <form onSubmit={handleSend} className="p-3.5 bg-[#141414] border-t border-neutral-800 z-20">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -735,7 +983,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                 placeholder={isUserBlocked ? 'User blocked' : `Message ${activeConversation.participantName}...`}
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
-                className="flex-1 bg-[#1e1e1e] border border-neutral-800 text-white rounded-2xl px-4 py-3 text-xs sm:text-sm font-medium focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                className="flex-1 bg-[#1e1e1e] border border-neutral-800 text-white rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:border-emerald-500 disabled:opacity-50"
               />
 
               <button
@@ -759,4 +1007,3 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     </div>
   );
 };
-
