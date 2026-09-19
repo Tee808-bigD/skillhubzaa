@@ -137,8 +137,11 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
   // Scroll Helpers
   const scrollToBottom = (smooth = true) => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
     }
   };
 
@@ -146,6 +149,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const scrollConversationsUp = () => {
@@ -412,7 +416,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-[calc(100vh-20px)] min-h-[680px] bg-[#1a1a1a] rounded-3xl border border-neutral-800 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-12 relative">
+    <div className="w-full max-w-7xl mx-auto h-[calc(100vh-80px)] min-h-[560px] max-h-[820px] bg-[#1a1a1a] rounded-3xl border border-neutral-800 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-12 relative">
       
       {/* Toast Notification Banner */}
       {toastMessage && (

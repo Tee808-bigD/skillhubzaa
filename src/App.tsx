@@ -577,7 +577,7 @@ export default function App() {
       <div className="flex-1 ml-16 lg:ml-64 min-h-screen pb-16">
         
         {/* Main Content View Switch */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4">
           
           {/* Feed View */}
           {(currentView === 'feed' || currentView === 'home') && (
