@@ -197,6 +197,17 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
   return (
     <div className="max-w-5xl mx-auto py-1 min-h-[calc(100vh-40px)] flex flex-col justify-center items-center relative select-none">
       
+      {/* Lower Bottom Left Add Reel Button (Outside the video window) */}
+      <div className="fixed bottom-6 left-20 lg:left-72 z-40">
+        <button
+          onClick={() => setIsCreateReelOpen(true)}
+          className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm rounded-full shadow-2xl transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/40"
+        >
+          <Plus className="w-4.5 h-4.5 stroke-[3]" />
+          <span>Add Reel</span>
+        </button>
+      </div>
+
       {/* Success Notification Toast */}
       {shareSuccessToast && (
         <div className="fixed top-20 z-50 bg-emerald-500 text-slate-950 px-4 py-2.5 rounded-2xl font-black text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
@@ -262,17 +273,6 @@ export const ReelsView: React.FC<ReelsViewProps> = ({
         {/* Bottom Creator & Caption Info Overlay */}
         <div className="relative z-20 p-5 bg-gradient-to-t from-black/95 via-black/60 to-transparent text-white space-y-3">
           
-          {/* Lower Bottom Left Add Reel Button */}
-          <div className="flex items-center justify-start pb-0.5">
-            <button
-              onClick={() => setIsCreateReelOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-full shadow-2xl transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/30"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Add Reel</span>
-            </button>
-          </div>
-
           {/* Creator Profile Info (Clickable to inspect author's profile info) */}
           <div className="flex items-center gap-3">
             <button
