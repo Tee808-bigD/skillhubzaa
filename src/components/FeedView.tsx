@@ -534,13 +534,13 @@ export const FeedView: React.FC<FeedViewProps> = ({
 
               {/* Media Attachment */}
               {post.mediaUrl && (
-                <div className="w-full max-h-[480px] bg-black overflow-hidden flex items-center justify-center">
+                <div className="w-full bg-black/90 overflow-hidden flex items-center justify-center border-y border-neutral-800/60">
                   {post.mediaType === 'video' || post.mediaUrl.startsWith('data:video') || /\.(mp4|webm|mov|mkv|avi)($|\?)/i.test(post.mediaUrl) ? (
                     <video
                       src={post.mediaUrl}
                       controls
                       playsInline
-                      className="w-full max-h-[480px] object-contain bg-black"
+                      className="w-full max-h-[650px] object-contain bg-black"
                       onError={(e) => {
                         console.warn('Video failed to load:', e);
                       }}
@@ -549,7 +549,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
                     <img
                       src={post.mediaUrl}
                       alt="Post media attachment"
-                      className="w-full h-full object-cover"
+                      className="w-full max-h-[650px] object-contain mx-auto"
                       onError={(e) => {
                         (e.target as HTMLElement).style.display = 'none';
                       }}
