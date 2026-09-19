@@ -432,7 +432,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-[calc(100vh-80px)] min-h-[560px] max-h-[820px] bg-[#1a1a1a] rounded-3xl border border-neutral-800 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-12 relative">
+    <div className="w-full max-w-7xl mx-auto h-[calc(100vh-90px)] min-h-[500px] max-h-[820px] bg-[#1a1a1a] rounded-3xl border border-neutral-800 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-12 relative">
       
       {/* Toast Notification Banner */}
       {toastMessage && (
@@ -696,10 +696,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       )}
 
       {/* Left Sidebar: Direct Message Conversations List */}
-      <div className={`md:col-span-4 border-r border-neutral-800 flex flex-col bg-[#141414] ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`md:col-span-4 border-r border-neutral-800 flex flex-col h-full min-h-0 bg-[#141414] overflow-hidden ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
         
         {/* Header & Search */}
-        <div className="p-4 border-b border-neutral-800 space-y-3">
+        <div className="p-4 border-b border-neutral-800 space-y-3 shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="font-black text-white text-lg">Direct Messages</h2>
             <span className="bg-emerald-500/20 text-emerald-400 text-xs font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
@@ -720,10 +720,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
         </div>
 
         {/* Conversation List Container with ScrollBar Control Strip */}
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 min-h-0 flex overflow-hidden relative">
           <div 
             ref={conversationsContainerRef} 
-            className="flex-1 overflow-y-auto divide-y divide-neutral-800/50 scroll-smooth pr-1"
+            className="flex-1 min-h-0 overflow-y-auto divide-y divide-neutral-800/50 scroll-smooth pr-1"
           >
             {filteredConversations.map((chat) => {
               const isSelected = chat.id === activeConversation?.id;
@@ -795,10 +795,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
       {/* Right Column: Active Conversation Area */}
       {activeConversation ? (
-        <div className={`md:col-span-8 flex flex-col h-full bg-[#181818] relative ${mobileShowChat ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`md:col-span-8 flex flex-col h-full min-h-0 bg-[#181818] relative overflow-hidden ${mobileShowChat ? 'flex' : 'hidden md:flex'}`}>
           
           {/* Chat Room Header */}
-          <div className="p-3.5 px-4 sm:px-5 bg-[#141414] border-b border-neutral-800 flex items-center justify-between z-10">
+          <div className="p-3.5 px-4 sm:px-5 bg-[#141414] border-b border-neutral-800 flex items-center justify-between z-10 shrink-0">
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
@@ -958,7 +958,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
           {/* In-Chat Search Bar Banner */}
           {inChatSearchOpen && (
-            <div className="p-3 bg-neutral-900 border-b border-neutral-800 flex items-center gap-3 animate-in fade-in">
+            <div className="p-3 bg-neutral-900 border-b border-neutral-800 flex items-center gap-3 animate-in fade-in shrink-0">
               <Search className="w-4 h-4 text-emerald-400" />
               <input
                 type="text"
@@ -981,17 +981,17 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
           {/* User Blocked Notice Banner */}
           {isUserBlocked && (
-            <div className="p-2.5 bg-rose-500/10 border-b border-rose-500/20 text-rose-300 text-xs font-bold text-center flex items-center justify-center gap-2">
+            <div className="p-2.5 bg-rose-500/10 border-b border-rose-500/20 text-rose-300 text-xs font-bold text-center flex items-center justify-center gap-2 shrink-0">
               <ShieldAlert className="w-4 h-4" />
               <span>You have blocked {activeConversation.participantName}. Unblock from the 3-dots menu to send messages.</span>
             </div>
           )}
 
           {/* Messages Feed Container with Scroll Control Strip */}
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 min-h-0 flex overflow-hidden relative">
             <div 
               ref={messagesContainerRef}
-              className="flex-1 p-4 overflow-y-auto space-y-2 scroll-smooth relative"
+              className="flex-1 min-h-0 p-4 overflow-y-auto space-y-2 scroll-smooth relative"
             >
               {filteredMessages.length === 0 ? (
                 <div className="text-center text-neutral-500 text-xs py-10 font-bold">
@@ -1108,7 +1108,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
           )}
 
           {/* Message Input Box */}
-          <form onSubmit={handleSend} className="p-3.5 bg-[#141414] border-t border-neutral-800 z-20">
+          <form onSubmit={handleSend} className="p-3 sm:p-3.5 bg-[#141414] border-t border-neutral-800 z-20 shrink-0">
             <div className="flex items-center gap-2">
               <button
                 type="button"
