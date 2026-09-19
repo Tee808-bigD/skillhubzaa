@@ -215,15 +215,20 @@ export const FeedView: React.FC<FeedViewProps> = ({
                     }}
                   />
 
-                  <div className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-wider text-center">OR PASTE WEB URL</div>
-
-                  <input
-                    type="text"
-                    placeholder="Paste Image or Video URL (e.g. https://images.unsplash.com/...)"
-                    value={composerMediaUrl.startsWith('data:') ? '[Uploaded file data attached]' : composerMediaUrl}
-                    onChange={(e) => setComposerMediaUrl(e.target.value)}
-                    className="w-full bg-[#1e1e1e] text-white rounded-xl px-3 py-2 text-xs font-semibold border border-neutral-800 focus:outline-none focus:border-emerald-500"
-                  />
+                  {!composerMediaUrl.startsWith('data:') ? (
+                    <input
+                      type="text"
+                      placeholder="Or paste Image/Video URL (e.g. https://images.unsplash.com/...)"
+                      value={composerMediaUrl}
+                      onChange={(e) => setComposerMediaUrl(e.target.value)}
+                      className="w-full bg-[#1e1e1e] text-white rounded-xl px-3 py-2 text-xs font-semibold border border-neutral-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                      <span>Device media file attached ({composerMediaUrl.startsWith('data:video') ? 'Video' : 'Image'})</span>
+                      <button type="button" onClick={() => setComposerMediaUrl('')} className="hover:text-white"><X className="w-4 h-4" /></button>
+                    </div>
+                  )}
 
                   <input
                     type="text"
@@ -237,12 +242,16 @@ export const FeedView: React.FC<FeedViewProps> = ({
 
               {/* Inline Media Thumbnail Preview */}
               {composerMediaUrl && (
-                <div className="relative w-fit group border border-emerald-500/40 rounded-2xl overflow-hidden shadow-md">
-                  <img src={composerMediaUrl} alt="Preview attachment" className="h-28 w-auto max-w-full object-cover" />
+                <div className="relative w-fit group border border-emerald-500/40 rounded-2xl overflow-hidden shadow-md bg-black">
+                  {composerMediaUrl.startsWith('data:video') || /\.(mp4|webm|mov|mkv|avi)($|\?)/i.test(composerMediaUrl) ? (
+                    <video src={composerMediaUrl} controls className="h-32 w-auto max-w-full object-contain" />
+                  ) : (
+                    <img src={composerMediaUrl} alt="Preview attachment" className="h-28 w-auto max-w-full object-cover" />
+                  )}
                   <button
                     type="button"
                     onClick={() => setComposerMediaUrl('')}
-                    className="absolute top-1.5 right-1.5 p-1 bg-black/80 hover:bg-black text-white rounded-full transition"
+                    className="absolute top-1.5 right-1.5 p-1 bg-black/80 hover:bg-black text-white rounded-full transition z-10"
                     title="Remove media attachment"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -324,11 +333,26 @@ export const FeedView: React.FC<FeedViewProps> = ({
               {/* Media Attachment */}
               {post.mediaUrl && (
                 <div className="w-full max-h-[480px] bg-black overflow-hidden flex items-center justify-center">
-                  <img
-                    src={post.mediaUrl}
-                    alt="Post media attachment"
-                    className="w-full h-full object-cover"
-                  />
+                  {post.mediaType === 'video' || post.mediaUrl.startsWith('data:video') || /\.(mp4|webm|mov|mkv|avi)($|\?)/i.test(post.mediaUrl) ? (
+                    <video
+                      src={post.mediaUrl}
+                      controls
+                      playsInline
+                      className="w-full max-h-[480px] object-contain bg-black"
+                      onError={(e) => {
+                        console.warn('Video failed to load:', e);
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={post.mediaUrl}
+                      alt="Post media attachment"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  )}
                 </div>
               )}
 

@@ -174,23 +174,36 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-neutral-400 block mb-1">OR Media Web URL / Data</label>
-                <input
-                  type="text"
-                  placeholder="https://images.unsplash.com/photo-..."
-                  value={postMediaUrl.startsWith('data:') ? '[Uploaded file data attached]' : postMediaUrl}
-                  onChange={(e) => setPostMediaUrl(e.target.value)}
-                  className="w-full bg-[#121212] border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
+                {!postMediaUrl.startsWith('data:') ? (
+                  <>
+                    <label className="text-xs font-bold text-neutral-400 block mb-1">OR Media Web URL</label>
+                    <input
+                      type="text"
+                      placeholder="https://images.unsplash.com/photo-..."
+                      value={postMediaUrl}
+                      onChange={(e) => setPostMediaUrl(e.target.value)}
+                      className="w-full bg-[#121212] border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                    <span>Device media file attached ({postMediaUrl.startsWith('data:video') ? 'Video' : 'Image'})</span>
+                    <button type="button" onClick={() => setPostMediaUrl('')} className="hover:text-white"><X className="w-4 h-4" /></button>
+                  </div>
+                )}
               </div>
 
               {postMediaUrl && (
-                <div className="relative w-fit group border border-emerald-500/40 rounded-2xl overflow-hidden shadow-md">
-                  <img src={postMediaUrl} alt="Post Attachment Preview" className="h-28 w-auto max-w-full object-cover" />
+                <div className="relative w-fit group border border-emerald-500/40 rounded-2xl overflow-hidden shadow-md bg-black">
+                  {postMediaUrl.startsWith('data:video') || /\.(mp4|webm|mov|mkv|avi)($|\?)/i.test(postMediaUrl) ? (
+                    <video src={postMediaUrl} controls className="h-32 w-auto max-w-full object-contain" />
+                  ) : (
+                    <img src={postMediaUrl} alt="Post Attachment Preview" className="h-28 w-auto max-w-full object-cover" />
+                  )}
                   <button
                     type="button"
                     onClick={() => setPostMediaUrl('')}
-                    className="absolute top-1.5 right-1.5 p-1 bg-black/80 hover:bg-black text-white rounded-full transition"
+                    className="absolute top-1.5 right-1.5 p-1 bg-black/80 hover:bg-black text-white rounded-full transition z-10"
                     title="Remove media attachment"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -231,14 +244,23 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-neutral-400 block mb-1">OR Story Image / Video Web URL</label>
-                <input
-                  type="text"
-                  placeholder="https://images.unsplash.com/photo-..."
-                  value={storyMediaUrl.startsWith('data:') ? '[Uploaded file data attached]' : storyMediaUrl}
-                  onChange={(e) => setStoryMediaUrl(e.target.value)}
-                  className="w-full bg-[#121212] border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
+                {!storyMediaUrl.startsWith('data:') ? (
+                  <>
+                    <label className="text-xs font-bold text-neutral-400 block mb-1">OR Story Image / Video Web URL</label>
+                    <input
+                      type="text"
+                      placeholder="https://images.unsplash.com/photo-..."
+                      value={storyMediaUrl}
+                      onChange={(e) => setStoryMediaUrl(e.target.value)}
+                      className="w-full bg-[#121212] border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                    <span>Device story file attached ({storyMediaUrl.startsWith('data:video') ? 'Video' : 'Image'})</span>
+                    <button type="button" onClick={() => setStoryMediaUrl('')} className="hover:text-white"><X className="w-4 h-4" /></button>
+                  </div>
+                )}
               </div>
 
               <p className="text-[11px] text-neutral-500">Stories are visible for 24 hours to your followers and community members.</p>

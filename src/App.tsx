@@ -248,37 +248,66 @@ export default function App() {
     }));
   };
 
+  // Safe LocalStorage Helper to prevent QuotaExceededError crashes with video/media files
+  const safeSetLocalStorageItem = (key: string, value: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (err) {
+      console.warn(`[LocalStorage] Quota warning when saving ${key}:`, err);
+      try {
+        if (Array.isArray(value)) {
+          const sanitized = value.map(item => {
+            if (item && typeof item === 'object') {
+              const newItem = { ...item };
+              if (typeof newItem.mediaUrl === 'string' && newItem.mediaUrl.length > 200000) {
+                newItem.mediaUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80';
+              }
+              if (typeof newItem.videoUrl === 'string' && newItem.videoUrl.length > 200000) {
+                newItem.videoUrl = '';
+              }
+              return newItem;
+            }
+            return item;
+          });
+          localStorage.setItem(key, JSON.stringify(sanitized));
+        }
+      } catch (fallbackErr) {
+        console.error(`[LocalStorage] Fallback save failed for ${key}:`, fallbackErr);
+      }
+    }
+  };
+
   // Persist local state changes
   useEffect(() => {
-    localStorage.setItem('skillhub_user', JSON.stringify(user));
+    safeSetLocalStorageItem('skillhub_user', user);
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('skillhub_posts', JSON.stringify(socialPosts));
+    safeSetLocalStorageItem('skillhub_posts', socialPosts);
   }, [socialPosts]);
 
   useEffect(() => {
-    localStorage.setItem('skillhub_stories', JSON.stringify(stories));
+    safeSetLocalStorageItem('skillhub_stories', stories);
   }, [stories]);
 
   useEffect(() => {
-    localStorage.setItem('skillhub_chats', JSON.stringify(chatConversations));
+    safeSetLocalStorageItem('skillhub_chats', chatConversations);
   }, [chatConversations]);
 
   useEffect(() => {
-    localStorage.setItem('skillhub_events', JSON.stringify(events));
+    safeSetLocalStorageItem('skillhub_events', events);
   }, [events]);
 
   useEffect(() => {
-    localStorage.setItem('skillhub_services', JSON.stringify(services));
+    safeSetLocalStorageItem('skillhub_services', services);
   }, [services]);
 
   useEffect(() => {
-    localStorage.setItem('skillhub_resources', JSON.stringify(resources));
+    safeSetLocalStorageItem('skillhub_resources', resources);
   }, [resources]);
 
   useEffect(() => {
-    localStorage.setItem('skillhub_reels', JSON.stringify(reels));
+    safeSetLocalStorageItem('skillhub_reels', reels);
   }, [reels]);
 
   // Social Handlers
