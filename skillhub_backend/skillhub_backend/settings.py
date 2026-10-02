@@ -11,10 +11,19 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security configuration
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-skillhub-za-production-key-placeholder-994')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-skillhub-za-development-only-key-placeholder-994')
 DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']  # Allows ngrok and local dev hostnames
+if not DEBUG and 'django-insecure' in SECRET_KEY:
+    import warnings
+    warnings.warn("DJANGO_SECRET_KEY is using an insecure default in production! Set a custom key via DJANGO_SECRET_KEY.")
+
+# Allowed Hosts (Configurable via comma-separated DJANGO_ALLOWED_HOSTS)
+env_hosts = os.getenv('DJANGO_ALLOWED_HOSTS')
+if env_hosts:
+    ALLOWED_HOSTS = [h.strip() for h in env_hosts.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['*'] if DEBUG else ['127.0.0.1', 'localhost']
 
 # Application definition
 INSTALLED_APPS = [
@@ -161,12 +170,28 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
 ]
+
+# Append custom CORS origins from environment variable (e.g. Netlify URL)
+extra_cors = os.getenv('CORS_ALLOWED_ORIGINS')
+if extra_cors:
+    for origin in extra_cors.split(','):
+        cleaned = origin.strip()
+        if cleaned and cleaned not in CORS_ALLOWED_ORIGINS:
+            CORS_ALLOWED_ORIGINS.append(cleaned)
+
 CSRF_TRUSTED_ORIGINS = [
     'https://aistudio.google.com',
     'https://engrainedly-subinvolute-silvana.ngrok-free.dev',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
+
+extra_csrf = os.getenv('CSRF_TRUSTED_ORIGINS')
+if extra_csrf:
+    for origin in extra_csrf.split(','):
+        cleaned = origin.strip()
+        if cleaned and cleaned not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(cleaned)
 CORS_ALLOW_CREDENTIALS = True
 
 # Django Channels & Channel Layers Configuration

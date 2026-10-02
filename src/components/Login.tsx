@@ -10,8 +10,8 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onSuccess, onCancel, isModal = false }) => {
-  const [username, setUsername] = useState('thando_dev');
-  const [password, setPassword] = useState('SkillHubZA2026!');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
