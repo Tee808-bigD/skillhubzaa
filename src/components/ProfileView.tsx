@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { User, Course, Learnership, YouthService, SocialPost } from '../types';
-import { Edit3, CheckCircle2, ShieldCheck, Award, BookOpen, Briefcase, ShoppingBag, MapPin, Phone, Calendar, Trash2, MessageSquare, ThumbsUp, Send, Bookmark, ArrowLeft, UserPlus, UserCheck } from 'lucide-react';
+import { Edit3, CheckCircle2, ShieldCheck, Award, BookOpen, Briefcase, ShoppingBag, MapPin, Phone, Calendar, Trash2, MessageSquare, ThumbsUp, Send, Bookmark, ArrowLeft, UserPlus, UserCheck, Camera, RefreshCw } from 'lucide-react';
+import { uploadAvatar } from '../api/auth';
 
 interface ProfileViewProps {
   currentUser: User;
@@ -44,6 +45,39 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [name, setName] = useState(targetUser.name);
   const [bio, setBio] = useState(targetUser.bio || '');
   const [skills, setSkills] = useState(targetUser.skills.join(', '));
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarToast, setAvatarToast] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleAvatarFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const updatedUser = await uploadAvatar(file);
+      onUpdateUser({
+        ...currentUser,
+        avatar: updatedUser.avatar || currentUser.avatar,
+      });
+      setAvatarToast('Avatar uploaded & saved to Django media/avatars/! 📸');
+      setTimeout(() => setAvatarToast(null), 3000);
+    } catch (err: any) {
+      console.warn('Avatar upload fallback to local preview:', err);
+      const localPreview = URL.createObjectURL(file);
+      onUpdateUser({
+        ...currentUser,
+        avatar: localPreview,
+      });
+      setAvatarToast('Avatar updated locally.');
+      setTimeout(() => setAvatarToast(null), 3000);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,13 +114,53 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {/* Banner */}
         <div className="h-32 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 relative" />
 
+        {/* Toast Alert */}
+        {avatarToast && (
+          <div className="bg-emerald-500 text-slate-950 font-black text-xs px-4 py-2.5 rounded-2xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-200">
+            <span>{avatarToast}</span>
+            <button onClick={() => setAvatarToast(null)} className="ml-2 hover:opacity-80">✕</button>
+          </div>
+        )}
+
         <div className="p-6 pt-0 relative">
           <div className="flex justify-between items-end -mt-12 mb-4">
-            <img
-              src={targetUser.avatar}
-              alt={targetUser.name}
-              className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-md bg-white ring-2 ring-emerald-500/30"
-            />
+            {/* Avatar with click-to-upload */}
+            <div 
+              className={`relative group rounded-2xl ${isOwnProfile ? 'cursor-pointer' : ''}`}
+              onClick={() => isOwnProfile && !isUploadingAvatar && avatarInputRef.current?.click()}
+              title={isOwnProfile ? 'Click to upload and change avatar photo' : undefined}
+            >
+              <img
+                src={targetUser.avatar}
+                alt={targetUser.name}
+                className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-md bg-white ring-2 ring-emerald-500/30 group-hover:brightness-95 transition-all"
+              />
+
+              {isOwnProfile && (
+                <div className="absolute inset-0 bg-slate-950/50 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all backdrop-blur-[1px]">
+                  <Camera className="w-5 h-5 text-white mb-0.5" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-wider">Change</span>
+                </div>
+              )}
+
+              {isUploadingAvatar && (
+                <div className="absolute inset-0 bg-slate-950/70 rounded-2xl flex flex-col items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin mb-1" />
+                  <span className="text-[9px] font-bold text-white">Saving...</span>
+                </div>
+              )}
+
+              {/* Hidden file input for avatar upload */}
+              {isOwnProfile && (
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  onChange={handleAvatarFileSelect}
+                  accept="image/*"
+                  className="hidden"
+                />
+              )}
+            </div>
 
             {isOwnProfile ? (
               <button

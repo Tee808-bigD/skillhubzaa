@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { SocialPost, Story, CommunityEvent, User } from '../types';
-import { X, Image, Video, Calendar, Sparkles, Send } from 'lucide-react';
+import { X, Image, Video, Calendar, Sparkles, Send, Upload } from 'lucide-react';
 import { AICaptionGenerator } from './AICaptionGenerator';
 import { FileUploadWithScan } from './FileUploadWithScan';
+import { createPost } from '../api/posts';
 
 interface CreatePostModalProps {
   currentUser: User;
@@ -25,6 +26,9 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [postText, setPostText] = useState('');
   const [postMediaUrl, setPostMediaUrl] = useState('');
   const [postHashtags, setPostHashtags] = useState('');
+  const [postFile, setPostFile] = useState<File | null>(null);
+  const [postFilePreview, setPostFilePreview] = useState<string | null>(null);
+  const modalFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Story form
   const [storyMediaUrl, setStoryMediaUrl] = useState('');
@@ -36,14 +40,42 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [eventLocation, setEventLocation] = useState('Soweto Community Centre');
   const [eventDesc, setEventDesc] = useState('');
 
-  const handleSubmitPost = (e: React.FormEvent) => {
+  const handleModalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (postFilePreview) {
+      URL.revokeObjectURL(postFilePreview);
+    }
+    setPostFile(file);
+    setPostFilePreview(URL.createObjectURL(file));
+    setPostMediaUrl('');
+  };
+
+  const handleClearModalFile = () => {
+    if (postFilePreview) {
+      URL.revokeObjectURL(postFilePreview);
+    }
+    setPostFile(null);
+    setPostFilePreview(null);
+    if (modalFileInputRef.current) {
+      modalFileInputRef.current.value = '';
+    }
+  };
+
+  const handleSubmitPost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postText.trim() && !postMediaUrl.trim()) return;
+    if (!postText.trim() && !postMediaUrl.trim() && !postFile) return;
 
     const hashtags = postHashtags
       .split(',')
       .map(h => h.trim().replace(/^#/, ''))
       .filter(Boolean);
+
+    const isVideo = postFile
+      ? postFile.type.startsWith('video/')
+      : (postMediaUrl.startsWith('data:video') || /\.(mp4|webm|mov)($|\?)/i.test(postMediaUrl));
+
+    const mediaDisplay = postFilePreview || postMediaUrl || undefined;
 
     const newPost: SocialPost = {
       id: `post_${Date.now()}`,
@@ -55,8 +87,8 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       createdAt: 'Just now',
       content: postText.trim() || 'Shared a media update with the SkillHub community.',
       hashtags: hashtags.length > 0 ? hashtags : ['SkillHub', 'Community'],
-      mediaType: postMediaUrl ? 'image' : undefined,
-      mediaUrl: postMediaUrl || undefined,
+      mediaType: isVideo ? 'video' : (mediaDisplay ? 'image' : undefined),
+      mediaUrl: mediaDisplay,
       likesCount: 1,
       commentsCount: 0,
       sharesCount: 0,
@@ -65,6 +97,33 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
     onAddPost(newPost);
     onClose();
+
+    // Asynchronously sync with Django REST Framework API
+    try {
+      if (postFile) {
+        const formData = new FormData();
+        formData.append('content', postText.trim() || 'Shared a media update with SkillHub.');
+        formData.append('category', 'Community');
+        if (hashtags.length > 0) formData.append('hashtags', JSON.stringify(hashtags));
+        if (isVideo) {
+          formData.append('video_file', postFile);
+        } else {
+          formData.append('media_file', postFile);
+        }
+        await createPost(formData);
+      } else {
+        await createPost({
+          content: postText.trim(),
+          media_type: isVideo ? 'video' : (postMediaUrl ? 'image' : 'text'),
+          media_url: isVideo ? undefined : (postMediaUrl || undefined),
+          video_url: isVideo ? postMediaUrl : undefined,
+          category: 'Community',
+          hashtags: hashtags.length > 0 ? hashtags : ['SkillHubZA']
+        });
+      }
+    } catch (err) {
+      console.warn('Backend sync failed, post saved locally:', err);
+    }
   };
 
   const handleSubmitStory = (e: React.FormEvent) => {
@@ -77,7 +136,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       authorAvatar: currentUser.avatar,
       mediaUrl: storyMediaUrl,
       createdAt: 'Just now',
-      hasUnseen: true
+      hasUnseen: true,
+      slides: [{
+        id: `slide_${Date.now()}`,
+        mediaUrl: storyMediaUrl,
+        createdAt: 'Just now',
+        caption: ''
+      }]
     };
 
     onAddStory(newStory);
@@ -167,30 +232,59 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-neutral-400 block mb-1">Upload Media from Device (Malware & Virus Scanned)</label>
-                <FileUploadWithScan
-                  onFileSelect={(url) => setPostMediaUrl(url)}
+                <label className="text-xs font-bold text-neutral-400 block mb-1">Upload Photo / Video File</label>
+                <input
+                  type="file"
+                  ref={modalFileInputRef}
+                  onChange={handleModalFileChange}
+                  accept="image/*,video/*"
+                  className="hidden"
                 />
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => modalFileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Choose File from Device</span>
+                  </button>
+                  {postFile && (
+                    <span className="text-xs text-slate-300 font-mono truncate max-w-[200px]">
+                      {postFile.name}
+                    </span>
+                  )}
+                </div>
+
+                {postFile && postFilePreview && (
+                  <div className="relative mt-2 w-fit border border-emerald-500/40 rounded-xl overflow-hidden bg-black p-1">
+                    {postFile.type.startsWith('video/') ? (
+                      <video src={postFilePreview} controls className="h-32 w-auto max-w-full rounded-lg object-contain" />
+                    ) : (
+                      <img src={postFilePreview} alt="Selected preview" className="h-28 w-auto max-w-full rounded-lg object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleClearModalFile}
+                      className="absolute top-2 right-2 p-1 bg-black/80 hover:bg-rose-600 text-white rounded-full transition"
+                      title="Clear selected file"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
-                {!postMediaUrl.startsWith('data:') ? (
-                  <>
-                    <label className="text-xs font-bold text-neutral-400 block mb-1">OR Media Web URL</label>
-                    <input
-                      type="text"
-                      placeholder="https://images.unsplash.com/photo-..."
-                      value={postMediaUrl}
-                      onChange={(e) => setPostMediaUrl(e.target.value)}
-                      className="w-full bg-[#121212] border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                    />
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-                    <span>Device media file attached ({postMediaUrl.startsWith('data:video') ? 'Video' : 'Image'})</span>
-                    <button type="button" onClick={() => setPostMediaUrl('')} className="hover:text-white"><X className="w-4 h-4" /></button>
-                  </div>
-                )}
+                <label className="text-xs font-bold text-neutral-400 block mb-1">Or Media Web URL</label>
+                <input
+                  type="text"
+                  placeholder="https://images.unsplash.com/photo-..."
+                  value={postMediaUrl}
+                  onChange={(e) => setPostMediaUrl(e.target.value)}
+                  className="w-full bg-[#121212] border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                />
               </div>
 
               {postMediaUrl && (

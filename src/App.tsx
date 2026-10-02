@@ -11,6 +11,7 @@ import {
   LearningResource,
   SocialPost,
   Story,
+  StorySlide,
   Reel,
   CommunityEvent,
   ChatConversation
@@ -56,6 +57,10 @@ import { ProfileView } from './components/ProfileView';
 import { NotificationsView } from './components/NotificationsView';
 import { LearningResourcesView } from './components/LearningResourcesView';
 import { AddResourceModal } from './components/AddResourceModal';
+import { DjangoBackendModal } from './components/DjangoBackendModal';
+import { Login } from './components/Login';
+import { isUserLoggedIn, clearTokens } from './api/client';
+import { UserSummary } from './api/types';
 
 import { 
   GraduationCap, 
@@ -72,6 +77,57 @@ import {
   ThumbsUp,
   ExternalLink
 } from 'lucide-react';
+
+const normalizeStoriesList = (list: Story[], userName: string, userAvatar: string): Story[] => {
+  const map = new Map<string, Story>();
+
+  for (const s of list) {
+    const isMe = s.authorName === 'Your Story' || s.authorName.toLowerCase() === userName.toLowerCase();
+    const key = isMe ? '__CURRENT_USER__' : s.authorName.trim().toLowerCase();
+
+    const incomingSlides: StorySlide[] = (s.slides && s.slides.length > 0)
+      ? s.slides
+      : [{ id: s.id || `slide_${Date.now()}`, mediaUrl: s.mediaUrl, createdAt: s.createdAt || 'Just now', caption: '' }];
+
+    if (map.has(key)) {
+      const existing = map.get(key)!;
+      const existingSlides: StorySlide[] = (existing.slides && existing.slides.length > 0)
+        ? existing.slides
+        : [{ id: existing.id, mediaUrl: existing.mediaUrl, createdAt: existing.createdAt, caption: '' }];
+
+      const combined: StorySlide[] = [...existingSlides];
+      for (const slide of incomingSlides) {
+        if (!combined.some(cs => (cs.id && cs.id === slide.id) || (cs.mediaUrl && cs.mediaUrl === slide.mediaUrl))) {
+          combined.push(slide);
+        }
+      }
+
+      map.set(key, {
+        ...existing,
+        hasUnseen: existing.hasUnseen || s.hasUnseen,
+        mediaUrl: incomingSlides[incomingSlides.length - 1]?.mediaUrl || existing.mediaUrl,
+        slides: combined
+      });
+    } else {
+      map.set(key, {
+        ...s,
+        authorName: isMe ? userName : s.authorName,
+        authorAvatar: isMe ? userAvatar : s.authorAvatar,
+        slides: incomingSlides
+      });
+    }
+  }
+
+  const result: Story[] = [];
+  if (map.has('__CURRENT_USER__')) {
+    result.push(map.get('__CURRENT_USER__')!);
+    map.delete('__CURRENT_USER__');
+  }
+  for (const story of map.values()) {
+    result.push(story);
+  }
+  return result;
+};
 
 export default function App() {
   // Navigation State (default to social media feed)
@@ -130,9 +186,14 @@ export default function App() {
   const [stories, setStories] = useState<Story[]>(() => {
     const saved = localStorage.getItem('skillhub_stories');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return normalizeStoriesList(parsed, defaultUser.name, defaultUser.avatar);
+        }
+      } catch (e) { console.error(e); }
     }
-    return initialStories;
+    return normalizeStoriesList(initialStories, defaultUser.name, defaultUser.avatar);
   });
 
   const [reels, setReels] = useState<Reel[]>(() => {
@@ -229,6 +290,43 @@ export default function App() {
   const [escrowServiceModal, setEscrowServiceModal] = useState<YouthService | null>(null);
   const [selectedEventModal, setSelectedEventModal] = useState<CommunityEvent | null>(null);
   const [activeChatParticipantName, setActiveChatParticipantName] = useState<string>('');
+  const [isDjangoBackendOpen, setIsDjangoBackendOpen] = useState<boolean>(false);
+
+  // Authentication & SimpleJWT Session State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => isUserLoggedIn());
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleAuthLogout = () => setIsAuthenticated(false);
+    window.addEventListener('auth:logout', handleAuthLogout);
+    return () => window.removeEventListener('auth:logout', handleAuthLogout);
+  }, []);
+
+  const handleLoginSuccess = (userSummary?: UserSummary) => {
+    setIsAuthenticated(true);
+    setIsLoginModalOpen(false);
+    if (userSummary) {
+      setUser(prev => ({
+        ...prev,
+        id: userSummary.id || prev.id,
+        name: userSummary.full_name || userSummary.username,
+        handle: userSummary.username ? `@${userSummary.username}` : prev.handle,
+        avatar: userSummary.avatar || prev.avatar,
+        bio: userSummary.bio || prev.bio,
+        location: userSummary.location || prev.location,
+        province: (userSummary.province as any) || prev.province,
+        skills: userSummary.skills || prev.skills,
+        role: (userSummary.role as any) || prev.role,
+        verified: true,
+        setaVerified: userSummary.seta_verified ?? true,
+      }));
+    }
+  };
+
+  const handleLogout = () => {
+    clearTokens();
+    setIsAuthenticated(false);
+  };
 
   // Auto-filtering of concluded events
   const activeEvents = useMemo(() => {
@@ -290,11 +388,26 @@ export default function App() {
           const sanitized = value.map(item => {
             if (item && typeof item === 'object') {
               const newItem = { ...item };
-              if (typeof newItem.mediaUrl === 'string' && newItem.mediaUrl.length > 200000) {
-                newItem.mediaUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80';
+              if (typeof newItem.mediaUrl === 'string' && newItem.mediaUrl.length > 100000) {
+                newItem.mediaUrl = newItem.mediaUrl.startsWith('data:video')
+                  ? 'https://assets.mixkit.co/videos/preview/mixkit-software-developer-working-on-code-41315-large.mp4'
+                  : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80';
               }
-              if (typeof newItem.videoUrl === 'string' && newItem.videoUrl.length > 200000) {
+              if (typeof newItem.videoUrl === 'string' && newItem.videoUrl.length > 100000) {
                 newItem.videoUrl = '';
+              }
+              if (Array.isArray(newItem.slides)) {
+                newItem.slides = newItem.slides.map((sl: any) => {
+                  if (sl && typeof sl === 'object' && typeof sl.mediaUrl === 'string' && sl.mediaUrl.length > 100000) {
+                    return {
+                      ...sl,
+                      mediaUrl: sl.mediaUrl.startsWith('data:video')
+                        ? 'https://assets.mixkit.co/videos/preview/mixkit-software-developer-working-on-code-41315-large.mp4'
+                        : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'
+                    };
+                  }
+                  return sl;
+                });
               }
               return newItem;
             }
@@ -364,7 +477,80 @@ export default function App() {
   };
 
   const handleAddStory = (newStory: Story) => {
-    setStories(prev => [newStory, ...prev]);
+    setStories(prev => {
+      const isCurrentUser = newStory.authorName === 'Your Story' || newStory.authorName.toLowerCase() === user.name.toLowerCase();
+      const targetKey = isCurrentUser ? user.name.toLowerCase() : newStory.authorName.trim().toLowerCase();
+
+      const incomingSlide: StorySlide = (newStory.slides && newStory.slides.length > 0)
+        ? newStory.slides[0]
+        : {
+            id: `slide_${Date.now()}`,
+            mediaUrl: newStory.mediaUrl,
+            createdAt: 'Just now',
+            caption: ''
+          };
+
+      const existingIndex = prev.findIndex(s => {
+        if (isCurrentUser) {
+          return s.authorName === 'Your Story' || s.authorName.toLowerCase() === user.name.toLowerCase();
+        }
+        return s.authorName.trim().toLowerCase() === targetKey;
+      });
+
+      if (existingIndex >= 0) {
+        const existing = prev[existingIndex];
+        const existingSlides: StorySlide[] = (existing.slides && existing.slides.length > 0)
+          ? existing.slides
+          : [{ id: existing.id, mediaUrl: existing.mediaUrl, createdAt: existing.createdAt }];
+
+        const updatedStory: Story = {
+          ...existing,
+          authorName: isCurrentUser ? user.name : existing.authorName,
+          authorAvatar: isCurrentUser ? user.avatar : existing.authorAvatar,
+          mediaUrl: incomingSlide.mediaUrl,
+          createdAt: 'Just now',
+          hasUnseen: true,
+          slides: [...existingSlides, incomingSlide]
+        };
+
+        const copy = [...prev];
+        copy[existingIndex] = updatedStory;
+        return copy;
+      } else {
+        const createdStory: Story = {
+          ...newStory,
+          id: `story_${Date.now()}`,
+          authorName: isCurrentUser ? user.name : newStory.authorName,
+          authorAvatar: isCurrentUser ? user.avatar : newStory.authorAvatar,
+          mediaUrl: incomingSlide.mediaUrl,
+          createdAt: 'Just now',
+          hasUnseen: true,
+          slides: [incomingSlide]
+        };
+        return isCurrentUser ? [createdStory, ...prev] : [...prev, createdStory];
+      }
+    });
+  };
+
+  const handleDeleteStorySlide = (storyId: string, slideId: string) => {
+    setStories(prev => {
+      const updated = prev.map(story => {
+        if (story.id === storyId || story.authorName === user.name || story.authorName === 'Your Story') {
+          const currentSlides = story.slides || [{ id: story.id, mediaUrl: story.mediaUrl, createdAt: story.createdAt }];
+          const filteredSlides = currentSlides.filter(s => s.id !== slideId);
+          if (filteredSlides.length === 0) {
+            return null;
+          }
+          return {
+            ...story,
+            mediaUrl: filteredSlides[filteredSlides.length - 1].mediaUrl,
+            slides: filteredSlides
+          };
+        }
+        return story;
+      }).filter((s): s is Story => s !== null);
+      return updated;
+    });
   };
 
   const handleAddEvent = (newEvent: CommunityEvent) => {
@@ -609,6 +795,10 @@ export default function App() {
         unreadMessagesCount={1}
         unreadNotifsCount={unreadNotifCount}
         onOpenCreate={() => setIsCreatePostModalOpen(true)}
+        onOpenDjangoBackend={() => setIsDjangoBackendOpen(true)}
+        isAuthenticated={isAuthenticated}
+        onOpenLogin={() => setIsLoginModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main View Area offset by sidebar */}
@@ -627,6 +817,7 @@ export default function App() {
               onLikePost={handleLikePost}
               onAddPost={handleAddSocialPost}
               onAddStory={handleAddStory}
+              onDeleteStorySlide={handleDeleteStorySlide}
               onToggleBookmarkPost={handleToggleBookmarkPost}
               onDeletePost={handleDeletePost}
               onOpenDirectChat={handleOpenDirectChat}
@@ -634,6 +825,7 @@ export default function App() {
               onOpenCreateEvent={() => setIsCreatePostModalOpen(true)}
               onSelectEvent={setSelectedEventModal}
               onOpenProfile={handleOpenUserProfile}
+              onOpenDjangoBackend={() => setIsDjangoBackendOpen(true)}
             />
           )}
 
@@ -922,6 +1114,21 @@ export default function App() {
           event={selectedEventModal}
           onClose={() => setSelectedEventModal(null)}
           onRSVP={handleRSVPEvent}
+        />
+      )}
+
+      {/* Django REST Framework Backend Architecture & Explorer Modal */}
+      <DjangoBackendModal
+        isOpen={isDjangoBackendOpen}
+        onClose={() => setIsDjangoBackendOpen(false)}
+      />
+
+      {/* JWT Authentication Modal */}
+      {isLoginModalOpen && (
+        <Login
+          isModal
+          onSuccess={handleLoginSuccess}
+          onCancel={() => setIsLoginModalOpen(false)}
         />
       )}
 

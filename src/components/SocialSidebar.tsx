@@ -16,7 +16,10 @@ import {
   Sparkles,
   Award,
   MapPin,
-  Radio
+  Radio,
+  Server,
+  Lock,
+  LogOut
 } from 'lucide-react';
 
 interface SocialSidebarProps {
@@ -26,6 +29,10 @@ interface SocialSidebarProps {
   unreadMessagesCount: number;
   unreadNotifsCount: number;
   onOpenCreate: () => void;
+  onOpenDjangoBackend?: () => void;
+  isAuthenticated?: boolean;
+  onOpenLogin?: () => void;
+  onLogout?: () => void;
 }
 
 export const SocialSidebar: React.FC<SocialSidebarProps> = ({
@@ -34,7 +41,11 @@ export const SocialSidebar: React.FC<SocialSidebarProps> = ({
   currentUser,
   unreadMessagesCount,
   unreadNotifsCount,
-  onOpenCreate
+  onOpenCreate,
+  onOpenDjangoBackend,
+  isAuthenticated = false,
+  onOpenLogin,
+  onLogout
 }) => {
   const navItems = [
     { id: 'feed' as MainView, label: 'Home', icon: Home },
@@ -133,6 +144,44 @@ export const SocialSidebar: React.FC<SocialSidebarProps> = ({
 
       {/* User Profile & Footer Actions */}
       <div className="space-y-2 border-t border-neutral-800/80 pt-4">
+        {/* JWT Auth Button */}
+        {isAuthenticated ? (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] text-slate-300 hover:text-rose-400 hover:border-rose-500/40 transition-all cursor-pointer group"
+            title="Active JWT Session - Click to Sign Out"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="hidden lg:inline font-mono font-bold text-emerald-400">JWT: Authenticated</span>
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 group-hover:text-rose-400">
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Logout</span>
+            </div>
+          </button>
+        ) : (
+          <button
+            onClick={onOpenLogin}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md cursor-pointer hover:scale-[1.02]"
+            title="Sign in with Django SimpleJWT"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Sign In (JWT)</span>
+          </button>
+        )}
+
+        {onOpenDjangoBackend && (
+          <button
+            onClick={onOpenDjangoBackend}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-neutral-400 hover:text-emerald-400 hover:bg-neutral-800/50 transition-all font-semibold text-xs group"
+            title="Django REST Framework Backend Console"
+          >
+            <Server className="w-5 h-5 text-emerald-400 shrink-0 group-hover:scale-110 transition-all" />
+            <span className="hidden lg:inline font-bold">Django DRF Hub</span>
+          </button>
+        )}
+
         <button
           onClick={() => onSelectView('profile')}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all ${

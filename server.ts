@@ -1,7 +1,9 @@
 import express from "express";
+import http from "http";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import { WebSocketServer, WebSocket } from "ws";
 
 async function startServer() {
   const app = express();
@@ -355,6 +357,553 @@ Respond with pure JSON object:
       res.status(500).json({ error: err.message || "Failed to generate CV" });
     }
   });
+
+  // ==========================================
+  // Django REST Framework (DRF) Live Endpoints
+  // ==========================================
+
+  // In-memory data store replicating Django Models & Data
+  let dbPosts = [
+    {
+      id: "post_1",
+      author: {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        first_name: "Thando",
+        last_name: "Mzobe",
+        full_name: "Thando Mzobe",
+        bio: "Full-stack software developer & youth tech mentor in Soweto.",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+        location: "Soweto, Johannesburg",
+        province: "Gauteng",
+        skills: ["React", "TypeScript", "Node.js", "Python", "Django"],
+        is_creator: true,
+        role: "youth",
+        seta_verified: true,
+        verified: true,
+        badge: "Top Contributor"
+      },
+      content: "🇿🇦 Just completed our community Django backend migration for SkillHub ZA! Models, DRF serializers, and admin registration are all set up.",
+      media_type: "image",
+      media_url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80",
+      video_url: null,
+      category: "Tech & Coding",
+      hashtags: ["Django", "Python", "SkillHubZA", "YouthInTech"],
+      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+      updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+      likes_count: 14,
+      comments_count: 3,
+      is_liked: false,
+      comments: [
+        {
+          id: "cmt_1",
+          author: { username: "lerato_solar", full_name: "Lerato Khumalo", avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80" },
+          content: "Incredible work! The DRF router makes adding endpoints super fast.",
+          created_at: new Date(Date.now() - 3600000).toISOString()
+        }
+      ]
+    },
+    {
+      id: "post_2",
+      author: {
+        id: "usr_lerato_solar",
+        username: "lerato_solar",
+        first_name: "Lerato",
+        last_name: "Khumalo",
+        full_name: "Lerato Khumalo",
+        bio: "Certified Solar PV installer & electrical apprentice in Durban.",
+        avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80",
+        location: "Durban, KwaZulu-Natal",
+        province: "KwaZulu-Natal",
+        skills: ["Solar PV Installation", "EWSETA Certified", "Inverter Wiring"],
+        is_creator: true,
+        role: "youth",
+        seta_verified: true,
+        verified: true,
+        badge: "Artisan Pro"
+      },
+      content: "Finished another 5kW hybrid solar installation today in Umhlanga! Clean cable management and full backup power. ☀️🔋",
+      media_type: "image",
+      media_url: "https://images.unsplash.com/photo-1508873696983-2df5293cb325?w=800&auto=format&fit=crop&q=80",
+      video_url: null,
+      category: "Green Energy & Trades",
+      hashtags: ["SolarSA", "Trades", "CleanEnergy", "Durban"],
+      created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
+      updated_at: new Date(Date.now() - 3600000 * 8).toISOString(),
+      likes_count: 28,
+      comments_count: 5,
+      is_liked: true,
+      comments: []
+    }
+  ];
+
+  let dbEvents = [
+    {
+      id: "evt_1",
+      title: "Gauteng Youth Tech & Freelance Summit 2026",
+      description: "Join 500+ aspiring software engineers, artisans, and startup founders at the Tshimologong Digital Innovation Precinct in Braamfontein.",
+      date: "2026-11-15T09:00:00Z",
+      date_badge: "Nov 15",
+      location: "Tshimologong Precinct, Braamfontein, JHB",
+      organizer: {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        full_name: "Thando Mzobe",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+      },
+      image_url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=80",
+      category: "Hackathon & Summit",
+      attendees_count: 142,
+      is_attending: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: "evt_2",
+      title: "Cape Town Solar & Green Tech Hands-On Workshop",
+      description: "Learn practical hybrid inverter wiring, battery storage sizing, and South African SANS compliance standards with certified EWSETA mentors.",
+      date: "2026-11-28T10:00:00Z",
+      date_badge: "Nov 28",
+      location: "Woodstock Exchange, Cape Town",
+      organizer: {
+        id: "usr_lerato_solar",
+        username: "lerato_solar",
+        full_name: "Lerato Khumalo",
+        avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80"
+      },
+      image_url: "https://images.unsplash.com/photo-1509391365360-2e959784a276?w=800&auto=format&fit=crop&q=80",
+      category: "Hands-on Workshop",
+      attendees_count: 88,
+      is_attending: false,
+      created_at: new Date().toISOString()
+    }
+  ];
+
+  let dbServices = [
+    {
+      id: "srv_1",
+      title: "Modern React & Python Django Web Development",
+      description: "Custom web applications, responsive landing pages, and RESTful API integrations built to high performance standards.",
+      provider: {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        full_name: "Thando Mzobe",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+      },
+      price: "1850.00",
+      price_unit: "project",
+      category: "web_dev",
+      image_url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80",
+      phone: "+27 72 345 6789",
+      deliverables: ["Responsive UI", "REST API Integration", "1 Month Support"],
+      verified_youth: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: "srv_2",
+      title: "Home & Business Solar System Assessment & Installation",
+      description: "Full site survey, battery calculation, CoC certification assistance, and safe inverter setup.",
+      provider: {
+        id: "usr_lerato_solar",
+        username: "lerato_solar",
+        full_name: "Lerato Khumalo",
+        avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80"
+      },
+      price: "850.00",
+      price_unit: "day",
+      category: "solar_repair",
+      image_url: "https://images.unsplash.com/photo-1508873696983-2df5293cb325?w=600&auto=format&fit=crop&q=80",
+      phone: "+27 83 234 5678",
+      deliverables: ["Safety inspection", "Inverter wiring", "Load testing"],
+      verified_youth: true,
+      created_at: new Date().toISOString()
+    }
+  ];
+
+  // Django Backend Metadata & Architecture Info
+  app.get("/api/django/summary", (req, res) => {
+    res.json({
+      status: "ready",
+      project_name: "skillhub_backend",
+      app_name: "core",
+      framework: "Django 5.0+ & Django REST Framework",
+      database: "PostgreSQL (Production) / SQLite3 (Development)",
+      custom_user_model: "core.User",
+      models: [
+        { name: "User", description: "Custom User extending AbstractUser (bio, avatar, location, skills, is_creator, role, province, seta_verified)" },
+        { name: "Profile", description: "OneToOne model with phone, education_level, matric_year, certificates_count" },
+        { name: "Post", description: "Feed posts with author, content, media_type, media_url, video_url, category, hashtags" },
+        { name: "Comment", description: "Comments linked to Post and Author with timestamp" },
+        { name: "Like", description: "Unique likes with unique_together constraint on (post, user)" },
+        { name: "Event", description: "Community events, summits, and workshops with RSVPs" },
+        { name: "Service", description: "Youth freelance & artisan service marketplace listings" },
+        { name: "Reel", description: "Short video reels with video_url, caption, audio_track" },
+        { name: "Message", description: "Direct 1-on-1 messages between users" }
+      ],
+      endpoints: [
+        { path: "/api/posts/", method: "GET/POST", description: "List and create social feed posts" },
+        { path: "/api/posts/{id}/like/", method: "POST", description: "Toggle like on post" },
+        { path: "/api/posts/{id}/comments/", method: "GET/POST", description: "View and add comments" },
+        { path: "/api/events/", method: "GET/POST", description: "Community events list and creation" },
+        { path: "/api/events/{id}/rsvp/", method: "POST", description: "RSVP to an event" },
+        { path: "/api/services/", method: "GET/POST", description: "Freelance service listings" },
+        { path: "/api/reels/", method: "GET/POST", description: "Short video reels" },
+        { path: "/api/users/", method: "GET", description: "SkillHub users list & profiles" },
+        { path: "/api/users/me/", method: "GET", description: "Current authenticated user profile" }
+      ],
+      files_generated: [
+        "skillhub_backend/manage.py",
+        "skillhub_backend/requirements.txt",
+        "skillhub_backend/.env.example",
+        "skillhub_backend/skillhub_backend/settings.py",
+        "skillhub_backend/skillhub_backend/urls.py",
+        "skillhub_backend/skillhub_backend/wsgi.py",
+        "skillhub_backend/skillhub_backend/asgi.py",
+        "skillhub_backend/core/models.py",
+        "skillhub_backend/core/admin.py",
+        "skillhub_backend/core/serializers.py",
+        "skillhub_backend/core/views.py",
+        "skillhub_backend/core/urls.py",
+        "skillhub_backend/core/signals.py",
+        "skillhub_backend/README.md"
+      ]
+    });
+  });
+
+  // ==========================================
+  // JWT Authentication Endpoints (SimpleJWT)
+  // ==========================================
+  const generateMockJwt = (userId: string, type: 'access' | 'refresh') => {
+    const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const payload = Buffer.from(JSON.stringify({
+      token_type: type,
+      exp: Math.floor(Date.now() / 1000) + (type === 'access' ? 86400 : 86400 * 7),
+      jti: Math.random().toString(36).substring(2),
+      user_id: userId
+    })).toString("base64url");
+    const signature = Buffer.from(`signed_${type}_${userId}_skillhub`).toString("base64url");
+    return `${header}.${payload}.${signature}`;
+  };
+
+  const handleTokenObtain = (req: any, res: any) => {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({
+        detail: "No active account found with the given credentials"
+      });
+    }
+
+    const userId = username.toLowerCase() === 'lerato_solar' ? 'usr_lerato_solar' : 'usr_thando_808';
+    const isLerato = userId === 'usr_lerato_solar';
+
+    const userObj = {
+      id: userId,
+      username: username,
+      email: `${username.toLowerCase()}@skillhub.za`,
+      first_name: isLerato ? "Lerato" : "Thando",
+      last_name: isLerato ? "Khumalo" : "Mzobe",
+      full_name: isLerato ? "Lerato Khumalo" : "Thando Mzobe",
+      bio: isLerato 
+        ? "Certified Solar PV installer & electrical apprentice in Durban." 
+        : "Full-stack software developer & youth tech mentor in Soweto.",
+      avatar: isLerato
+        ? "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80"
+        : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+      location: isLerato ? "Durban, KwaZulu-Natal" : "Soweto, Johannesburg",
+      province: isLerato ? "KwaZulu-Natal" : "Gauteng",
+      skills: isLerato ? ["Solar PV Installation", "EWSETA Certified"] : ["React", "TypeScript", "Python", "Django"],
+      is_creator: true,
+      role: "youth",
+      seta_verified: true,
+      verified: true,
+      badge: isLerato ? "Artisan Pro" : "Top Contributor"
+    };
+
+    res.json({
+      access: generateMockJwt(userId, 'access'),
+      refresh: generateMockJwt(userId, 'refresh'),
+      user: userObj
+    });
+  };
+
+  app.post("/api/token/", handleTokenObtain);
+  app.post("/api/token", handleTokenObtain);
+
+  const handleTokenRefresh = (req: any, res: any) => {
+    const { refresh } = req.body || {};
+    if (!refresh) {
+      return res.status(400).json({ detail: "Refresh token is required." });
+    }
+    res.json({
+      access: generateMockJwt("usr_thando_808", 'access')
+    });
+  };
+
+  app.post("/api/token/refresh/", handleTokenRefresh);
+  app.post("/api/token/refresh", handleTokenRefresh);
+
+  const handleUserMe = (req: any, res: any) => {
+    const authHeader = req.headers.authorization || '';
+    const isLerato = authHeader.includes('usr_lerato_solar');
+
+    res.json({
+      id: isLerato ? "usr_lerato_solar" : "usr_thando_808",
+      username: isLerato ? "lerato_solar" : "thando_dev",
+      email: isLerato ? "lerato@skillhub.za" : "thando@skillhub.za",
+      first_name: isLerato ? "Lerato" : "Thando",
+      last_name: isLerato ? "Khumalo" : "Mzobe",
+      full_name: isLerato ? "Lerato Khumalo" : "Thando Mzobe",
+      bio: isLerato 
+        ? "Certified Solar PV installer & electrical apprentice in Durban." 
+        : "Full-stack software developer & youth tech mentor in Soweto.",
+      avatar: isLerato
+        ? "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80"
+        : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+      location: isLerato ? "Durban, KwaZulu-Natal" : "Soweto, Johannesburg",
+      province: isLerato ? "KwaZulu-Natal" : "Gauteng",
+      skills: isLerato ? ["Solar PV Installation", "EWSETA Certified"] : ["React", "TypeScript", "Python", "Django"],
+      is_creator: true,
+      role: "youth",
+      seta_verified: true,
+      verified: true,
+      badge: isLerato ? "Artisan Pro" : "Top Contributor"
+    });
+  };
+
+  app.get("/api/users/me/", handleUserMe);
+  app.get("/api/users/me", handleUserMe);
+
+  // DRF Posts Endpoint
+  const handleGetPosts = (req: any, res: any) => {
+    res.json({
+      count: dbPosts.length,
+      next: null,
+      previous: null,
+      results: dbPosts
+    });
+  };
+  app.get("/api/posts", handleGetPosts);
+  app.get("/api/posts/", handleGetPosts);
+
+  const handleCreatePost = (req: any, res: any) => {
+    const { content, media_url, video_url, media_type = "text", category = "General", hashtags = [] } = req.body || {};
+    if (!content) {
+      return res.status(400).json({ content: ["This field may not be blank."] });
+    }
+
+    const newPost = {
+      id: `post_${Date.now()}`,
+      author: {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        first_name: "Thando",
+        last_name: "Mzobe",
+        full_name: "Thando Mzobe",
+        bio: "Full-stack software developer & youth tech mentor in Soweto.",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+        location: "Soweto, Johannesburg",
+        province: "Gauteng",
+        skills: ["React", "TypeScript", "Node.js", "Python", "Django"],
+        is_creator: true,
+        role: "youth",
+        seta_verified: true,
+        verified: true,
+        badge: "Top Contributor"
+      },
+      content,
+      media_type,
+      media_url: media_url || null,
+      video_url: video_url || null,
+      category,
+      hashtags: Array.isArray(hashtags) ? hashtags : (typeof hashtags === 'string' ? hashtags.split(',').map((s: string) => s.trim()) : []),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      likes_count: 0,
+      comments_count: 0,
+      is_liked: false,
+      comments: []
+    };
+
+    dbPosts.unshift(newPost);
+    res.status(201).json(newPost);
+  };
+  app.post("/api/posts", handleCreatePost);
+  app.post("/api/posts/", handleCreatePost);
+
+  // DRF Post Like / Toggle Like Action (Supports both /toggle_like/ and /like/)
+  const handleToggleLike = (req: any, res: any) => {
+    const { id } = req.params;
+    const post = dbPosts.find(p => p.id === id);
+    if (!post) {
+      return res.status(404).json({ detail: "Not found." });
+    }
+
+    post.is_liked = !post.is_liked;
+    post.likes_count += post.is_liked ? 1 : -1;
+
+    res.json({
+      status: "success",
+      is_liked: post.is_liked,
+      likes_count: post.likes_count
+    });
+  };
+  app.post("/api/posts/:id/like", handleToggleLike);
+  app.post("/api/posts/:id/like/", handleToggleLike);
+  app.post("/api/posts/:id/toggle_like", handleToggleLike);
+  app.post("/api/posts/:id/toggle_like/", handleToggleLike);
+
+  // DRF Post Comments
+  app.get("/api/posts/:id/comments", (req, res) => {
+    const { id } = req.params;
+    const post = dbPosts.find(p => p.id === id);
+    if (!post) {
+      return res.status(404).json({ detail: "Not found." });
+    }
+    res.json(post.comments || []);
+  });
+
+  app.post("/api/posts/:id/comments", (req, res) => {
+    const { id } = req.params;
+    const post = dbPosts.find(p => p.id === id);
+    if (!post) {
+      return res.status(404).json({ detail: "Not found." });
+    }
+
+    const { content } = req.body || {};
+    if (!content) {
+      return res.status(400).json({ content: ["This field may not be blank."] });
+    }
+
+    const newComment = {
+      id: `cmt_${Date.now()}`,
+      author: {
+        username: "thando_dev",
+        full_name: "Thando Mzobe",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+      },
+      content,
+      created_at: new Date().toISOString()
+    };
+
+    post.comments.push(newComment);
+    post.comments_count = post.comments.length;
+    res.status(201).json(newComment);
+  });
+
+  // DRF Events Endpoint
+  app.get("/api/events", (req, res) => {
+    res.json({
+      count: dbEvents.length,
+      next: null,
+      previous: null,
+      results: dbEvents
+    });
+  });
+
+  app.post("/api/events/:id/rsvp", (req, res) => {
+    const { id } = req.params;
+    const event = dbEvents.find(e => e.id === id);
+    if (!event) {
+      return res.status(404).json({ detail: "Not found." });
+    }
+    event.is_attending = !event.is_attending;
+    event.attendees_count += event.is_attending ? 1 : -1;
+    res.json({
+      status: "success",
+      is_attending: event.is_attending,
+      attendees_count: event.attendees_count
+    });
+  });
+
+  // DRF Services Endpoint
+  app.get("/api/services", (req, res) => {
+    res.json({
+      count: dbServices.length,
+      next: null,
+      previous: null,
+      results: dbServices
+    });
+  });
+  // DRF Chat Rooms & Messaging Endpoints (Phase 3 Channels Support)
+  let dbRooms = [
+    {
+      id: "chat_thando_lerato",
+      name: "Lerato Khumalo & Thando Mzobe",
+      participants: [
+        {
+          id: "usr_thando_808",
+          username: "thando_dev",
+          full_name: "Thando Mzobe",
+          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+        },
+        {
+          id: "usr_lerato_solar",
+          username: "lerato_solar",
+          full_name: "Lerato Khumalo",
+          avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80"
+        }
+      ],
+      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  ];
+
+  let dbChatMessages = [
+    {
+      id: "msg_init_1",
+      room_id: "chat_thando_lerato",
+      sender: {
+        id: "usr_lerato_solar",
+        username: "lerato_solar",
+        full_name: "Lerato Khumalo",
+        avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80"
+      },
+      content: "Saw your Django Channels setup! The WebSockets connect immediately.",
+      timestamp: new Date(Date.now() - 3600000).toISOString()
+    }
+  ];
+
+  const handleGetRooms = (req: any, res: any) => {
+    res.json(dbRooms);
+  };
+  app.get("/api/rooms", handleGetRooms);
+  app.get("/api/rooms/", handleGetRooms);
+
+  const handleGetRoomMessages = (req: any, res: any) => {
+    const { id } = req.params;
+    const msgs = dbChatMessages.filter(m => m.room_id === id);
+    res.json(msgs);
+  };
+  app.get("/api/rooms/:id/messages", handleGetRoomMessages);
+  app.get("/api/rooms/:id/messages/", handleGetRoomMessages);
+
+  const handleDirectRoom = (req: any, res: any) => {
+    const { participant_id, participant_username } = req.body || {};
+    const room = dbRooms[0];
+    res.json(room);
+  };
+  app.post("/api/rooms/direct", handleDirectRoom);
+  app.post("/api/rooms/direct/", handleDirectRoom);
+
+  const handleCreateChatMessage = (req: any, res: any) => {
+    const { room_id, content } = req.body || {};
+    const newMsg = {
+      id: `msg_${Date.now()}`,
+      room_id: room_id || "chat_thando_lerato",
+      sender: {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        full_name: "Thando Mzobe",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+      },
+      content: content || "",
+      timestamp: new Date().toISOString()
+    };
+    dbChatMessages.push(newMsg);
+    res.status(201).json(newMsg);
+  };
+  app.post("/api/messages", handleCreateChatMessage);
+  app.post("/api/messages/", handleCreateChatMessage);
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -369,8 +918,97 @@ Respond with pure JSON object:
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  // Create HTTP server for both Express and WebSockets
+  const server = http.createServer(app);
+
+  // WebSocket Server for /ws/chat/:roomId/
+  const wss = new WebSocketServer({ noServer: true });
+  const roomSockets = new Map<string, Set<WebSocket>>();
+
+  server.on("upgrade", (request, socket, head) => {
+    const url = request.url || "";
+    if (url.includes("/ws/chat/")) {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    } else {
+      // Let Vite HMR handle other WebSocket upgrades if any
+      socket.destroy();
+    }
+  });
+
+  wss.on("connection", (ws, request) => {
+    const url = request.url || "";
+    const match = url.match(/\/ws\/chat\/([^/?]+)/);
+    const roomId = match ? match[1] : "default";
+
+    if (!roomSockets.has(roomId)) {
+      roomSockets.set(roomId, new Set());
+    }
+    const roomSet = roomSockets.get(roomId)!;
+    roomSet.add(ws);
+
+    // Send connection established confirmation
+    ws.send(JSON.stringify({
+      type: "connection_established",
+      room_id: roomId,
+      message: "Connected to SkillHub ZA real-time chat room (WebSocket)."
+    }));
+
+    ws.on("message", (data) => {
+      try {
+        const payload = JSON.parse(data.toString());
+        if (payload.type === "chat_message") {
+          const content = payload.message || payload.content || "";
+          const broadcastMsg = {
+            type: "chat_message",
+            id: `ws_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            room_id: roomId,
+            content,
+            message: content,
+            sender: {
+              id: "usr_thando_808",
+              username: "thando_dev",
+              full_name: "Thando Mzobe",
+              avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+            },
+            timestamp: new Date().toISOString()
+          };
+
+          // Broadcast to all sockets in this room
+          for (const client of roomSet) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(broadcastMsg));
+            }
+          }
+        } else if (payload.type === "typing") {
+          // Broadcast typing to other clients in room
+          for (const client of roomSet) {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: "typing",
+                room_id: roomId,
+                username: "thando_dev",
+                is_typing: payload.is_typing
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("WebSocket message handling error:", err);
+      }
+    });
+
+    ws.on("close", () => {
+      roomSet.delete(ws);
+      if (roomSet.size === 0) {
+        roomSockets.delete(roomId);
+      }
+    });
+  });
+
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server and WebSockets running on http://0.0.0.0:${PORT}`);
   });
 }
 

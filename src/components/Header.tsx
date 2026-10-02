@@ -13,7 +13,10 @@ import {
   Search,
   Menu,
   X,
-  BookOpen
+  BookOpen,
+  Server,
+  Lock,
+  LogOut
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -25,6 +28,10 @@ interface HeaderProps {
   onSearchChange: (query: string) => void;
   unreadCount: number;
   currentUser: User;
+  onOpenDjangoBackend?: () => void;
+  isAuthenticated?: boolean;
+  onOpenLogin?: () => void;
+  onLogout?: () => void;
 }
 
 const provincesList: SouthAfricanProvince[] = [
@@ -49,7 +56,11 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   onSearchChange,
   unreadCount,
-  currentUser
+  currentUser,
+  onOpenDjangoBackend,
+  isAuthenticated = false,
+  onOpenLogin,
+  onLogout
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
@@ -183,6 +194,35 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Icons & Profile */}
           <div className="flex items-center gap-2">
+            {/* JWT Sign In / Out */}
+            {isAuthenticated ? (
+              <button
+                onClick={onLogout}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-xs font-bold text-slate-300 hover:text-rose-400 transition-all cursor-pointer"
+                title="Sign out of JWT session"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Sign Out</span>
+              </button>
+            ) : (
+              <button
+                onClick={onOpenLogin}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition-all shadow cursor-pointer hover:scale-105"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
+            )}
+
+            <button
+              onClick={onOpenDjangoBackend}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-300 hover:text-emerald-400 text-xs font-bold transition-all shadow-sm"
+              title="Django REST Backend & Architecture"
+            >
+              <Server className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Django DRF</span>
+            </button>
+
             <button
               onClick={() => onSelectView('bookmarks')}
               className={`p-2 rounded-xl transition-all ${
@@ -283,6 +323,29 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Sparkles className="w-4 h-4 text-amber-400" /> AI Career & CV Builder
             </button>
+
+            <button
+              onClick={() => { onOpenDjangoBackend?.(); setMobileMenuOpen(false); }}
+              className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-emerald-400 text-xs font-extrabold flex items-center justify-center gap-2"
+            >
+              <Server className="w-4 h-4 text-emerald-400" /> Django DRF Backend Explorer
+            </button>
+
+            {isAuthenticated ? (
+              <button
+                onClick={() => { onLogout?.(); setMobileMenuOpen(false); }}
+                className="w-full p-2.5 rounded-xl bg-slate-800 border border-rose-500/30 text-rose-400 text-xs font-extrabold flex items-center justify-center gap-2"
+              >
+                <LogOut className="w-4 h-4" /> Sign Out (JWT)
+              </button>
+            ) : (
+              <button
+                onClick={() => { onOpenLogin?.(); setMobileMenuOpen(false); }}
+                className="w-full p-2.5 rounded-xl bg-emerald-500 text-slate-950 text-xs font-black flex items-center justify-center gap-2 shadow"
+              >
+                <Lock className="w-4 h-4" /> Sign In with JWT
+              </button>
+            )}
           </div>
         )}
 

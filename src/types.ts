@@ -204,6 +204,13 @@ export interface SocialPost {
   category?: string;
 }
 
+export interface StorySlide {
+  id: string;
+  mediaUrl: string;
+  createdAt: string;
+  caption?: string;
+}
+
 export interface Story {
   id: string;
   authorName: string;
@@ -211,6 +218,7 @@ export interface Story {
   mediaUrl: string;
   createdAt: string;
   hasUnseen: boolean;
+  slides?: StorySlide[];
 }
 
 export interface Reel {

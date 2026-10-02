@@ -31,8 +31,13 @@ import {
   ArrowUp,
   ArrowDown,
   Camera,
-  ChevronLeft
+  ChevronLeft,
+  Radio,
+  ExternalLink
 } from 'lucide-react';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { getAccessToken } from '../api/client';
+import { ChatWindow } from './ChatWindow';
 
 interface MessagesViewProps {
   conversations: ChatConversation[];
@@ -134,8 +139,42 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const [isUserBlocked, setIsUserBlocked] = useState(false);
   const [localMessagesOverride, setLocalMessagesOverride] = useState<Record<string, ChatMessage[]>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showDedicatedChatWindow, setShowDedicatedChatWindow] = useState(false);
 
   const activeConversation = conversations.find(c => c.id === selectedChatId) || conversations[0];
+  const token = getAccessToken();
+
+  // Django Channels WebSocket Integration
+  const {
+    sendMessage: sendWsMessage,
+    sendTyping: sendWsTyping,
+    connectionStatus: wsStatus,
+    isTyping: wsIsTyping,
+    typingUser: wsTypingUser
+  } = useWebSocket(activeConversation?.id, token, {
+    onMessageReceived: (incoming) => {
+      if (!activeConversation) return;
+      setLocalMessagesOverride(prev => {
+        const list = prev[activeConversation.id] || activeConversation.messages || [];
+        if (list.some(m => m.id === incoming.id)) return prev;
+        return {
+          ...prev,
+          [activeConversation.id]: [
+            ...list,
+            {
+              id: incoming.id,
+              senderId: typeof incoming.sender === 'object' ? incoming.sender.id : 'user',
+              senderName: typeof incoming.sender === 'object' ? incoming.sender.username : incoming.sender,
+              senderAvatar: typeof incoming.sender === 'object' ? (incoming.sender as any).avatar : undefined,
+              text: incoming.content || incoming.text || '',
+              timestamp: incoming.timestamp ? new Date(incoming.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now',
+              isMe: false
+            }
+          ]
+        };
+      });
+    }
+  });
 
   // Scroll Helpers
   const scrollToBottom = (smooth = true) => {
@@ -343,7 +382,12 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     e.preventDefault();
     if (!messageInput.trim() || !activeConversation || isUserBlocked) return;
 
-    onSendMessage(activeConversation.id, messageInput);
+    const text = messageInput.trim();
+    if (wsStatus === 'connected') {
+      sendWsMessage(text);
+    }
+    onSendMessage(activeConversation.id, text);
+    sendWsTyping(false);
     setMessageInput('');
     setShowEmojiPicker(false);
   };
@@ -847,6 +891,20 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             {/* Quick Action Controls */}
             <div className="flex items-center gap-2 relative">
               <button
+                type="button"
+                onClick={() => setShowDedicatedChatWindow(true)}
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                  wsStatus === 'connected'
+                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                    : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
+                }`}
+                title="Open Django Channels WebSocket Dedicated Window"
+              >
+                <Radio className={`w-3.5 h-3.5 ${wsStatus === 'connected' ? 'text-emerald-400 animate-pulse' : 'text-neutral-400'}`} />
+                <span>Channels WS {wsStatus === 'connected' ? '🟢' : '⚪'}</span>
+              </button>
+
+              <button
                 onClick={() => handleStartCallRequest('voice')}
                 className="p-2.5 bg-neutral-800/80 hover:bg-neutral-700 hover:text-emerald-400 rounded-xl transition text-neutral-300"
                 title="Start Voice Call"
@@ -1107,6 +1165,14 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             </div>
           )}
 
+          {/* Live WebSocket Typing Indicator */}
+          {wsIsTyping && (
+            <div className="px-4 py-1.5 bg-[#121212] text-[11px] text-emerald-400 font-semibold italic flex items-center gap-2 border-t border-neutral-800/80 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>{wsTypingUser || activeConversation.participantName} is typing...</span>
+            </div>
+          )}
+
           {/* Message Input Box */}
           <form onSubmit={handleSend} className="p-3 sm:p-3.5 bg-[#141414] border-t border-neutral-800 z-20 shrink-0">
             <div className="flex items-center gap-2">
@@ -1138,7 +1204,10 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                 disabled={isUserBlocked}
                 placeholder={isUserBlocked ? 'User blocked' : `Message ${activeConversation.participantName}...`}
                 value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
+                onChange={(e) => {
+                  setMessageInput(e.target.value);
+                  sendWsTyping(e.target.value.length > 0);
+                }}
                 className="flex-1 bg-[#1e1e1e] border border-neutral-800 text-white rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:border-emerald-500 disabled:opacity-50"
               />
 
@@ -1157,6 +1226,43 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
         <div className="md:col-span-8 flex flex-col items-center justify-center p-8 text-neutral-500 space-y-3">
           <Send className="w-12 h-12 text-neutral-700" />
           <p className="text-xs font-bold">Select a conversation to start chatting</p>
+        </div>
+      )}
+
+      {/* Django Channels WebSocket Dedicated ChatWindow Modal */}
+      {showDedicatedChatWindow && activeConversation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-6 animate-fadeIn">
+          <div className="w-full max-w-3xl h-[85vh] flex flex-col relative">
+            <button
+              onClick={() => setShowDedicatedChatWindow(false)}
+              className="absolute -top-3 -right-3 z-50 bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-full border border-slate-700 shadow-2xl transition hover:scale-110 cursor-pointer"
+              title="Close WebSocket Chat Window"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <ChatWindow
+              room={{
+                id: activeConversation.id,
+                name: activeConversation.participantName,
+                participants: [
+                  {
+                    id: activeConversation.participantId,
+                    username: activeConversation.participantName.toLowerCase().replace(/\s+/g, '_'),
+                    full_name: activeConversation.participantName,
+                    avatar: activeConversation.participantAvatar,
+                  } as any
+                ]
+              }}
+              currentUser={{
+                id: currentUser.id,
+                username: currentUser.handle.replace(/^@/, ''),
+                name: currentUser.name,
+                avatar: currentUser.avatar
+              }}
+              onClose={() => setShowDedicatedChatWindow(false)}
+              onOpenProfile={onOpenProfile}
+            />
+          </div>
         </div>
       )}
 

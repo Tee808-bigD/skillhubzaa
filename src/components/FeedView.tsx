@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { SocialPost, Story, CommunityEvent, User } from '../types';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { SocialPost, Story, StorySlide, CommunityEvent, User } from '../types';
 import { FileUploadWithScan } from './FileUploadWithScan';
+import { StoryViewerModal } from './StoryViewerModal';
+import { getPosts, createPost, toggleLikePost, addComment } from '../api/posts';
+import { PostData } from '../api/types';
 import { 
   ThumbsUp, 
   MessageSquare, 
@@ -9,6 +12,7 @@ import {
   Share2, 
   Image, 
   Video, 
+  Film,
   Plus, 
   Calendar, 
   Briefcase, 
@@ -29,7 +33,9 @@ import {
   Trash2,
   Check,
   ShieldCheck,
-  MapPin
+  MapPin,
+  Server,
+  RefreshCw
 } from 'lucide-react';
 
 interface FeedViewProps {
@@ -40,6 +46,7 @@ interface FeedViewProps {
   onLikePost: (postId: string) => void;
   onAddPost: (post: SocialPost) => void;
   onAddStory?: (story: Story) => void;
+  onDeleteStorySlide?: (storyId: string, slideId: string) => void;
   onToggleBookmarkPost?: (postId: string) => void;
   onDeletePost?: (postId: string) => void;
   onOpenDirectChat: (participantName: string) => void;
@@ -47,6 +54,7 @@ interface FeedViewProps {
   onOpenCreateEvent: () => void;
   onSelectEvent?: (event: CommunityEvent) => void;
   onOpenProfile?: (user: Partial<User>) => void;
+  onOpenDjangoBackend?: () => void;
 }
 
 export const FeedView: React.FC<FeedViewProps> = ({
@@ -57,18 +65,48 @@ export const FeedView: React.FC<FeedViewProps> = ({
   onLikePost,
   onAddPost,
   onAddStory,
+  onDeleteStorySlide,
   onToggleBookmarkPost,
   onDeletePost,
   onOpenDirectChat,
   onSelectView,
   onOpenCreateEvent,
   onSelectEvent,
-  onOpenProfile
+  onOpenProfile,
+  onOpenDjangoBackend
 }) => {
   const [composerText, setComposerText] = useState('');
   const [composerMediaUrl, setComposerMediaUrl] = useState('');
   const [composerHashtags, setComposerHashtags] = useState('');
   const [showMediaInput, setShowMediaInput] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+    }
+
+    setSelectedFile(file);
+    const preview = URL.createObjectURL(file);
+    setFilePreviewUrl(preview);
+    setComposerMediaUrl('');
+  };
+
+  const handleClearSelectedFile = () => {
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+    }
+    setSelectedFile(null);
+    setFilePreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // 3-Dot Options & Modals State
   const [openMenuPostId, setOpenMenuPostId] = useState<string | null>(null);
@@ -80,6 +118,59 @@ export const FeedView: React.FC<FeedViewProps> = ({
   const [shareModalPost, setShareModalPost] = useState<SocialPost | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
+
+  // Django REST Framework Live Posts & API State
+  const [apiPosts, setApiPosts] = useState<SocialPost[]>(posts);
+  const [isLoadingPosts, setIsLoadingPosts] = useState<boolean>(false);
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  const [postsSource, setPostsSource] = useState<'django' | 'cached'>('cached');
+
+  const fetchPostsFromApi = async () => {
+    setIsLoadingPosts(true);
+    try {
+      const data = await getPosts();
+      if (Array.isArray(data) && data.length > 0) {
+        const mapped: SocialPost[] = data.map((p: any) => ({
+          id: p.id,
+          authorId: p.author?.id || currentUser.id,
+          authorName: p.author?.full_name || p.author?.username || 'SkillHub Creator',
+          authorHandle: p.author?.username ? `@${p.author.username}` : '@creator',
+          authorAvatar: p.author?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+          authorLocation: p.author?.location || 'South Africa',
+          createdAt: p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+          content: p.content,
+          category: p.category,
+          hashtags: Array.isArray(p.hashtags) ? p.hashtags : [],
+          mediaType: p.media_type === 'video' ? 'video' : (p.media_url ? 'image' : undefined),
+          mediaUrl: p.media_url || p.video_url || undefined,
+          likesCount: p.likes_count || 0,
+          commentsCount: p.comments_count || (p.comments ? p.comments.length : 0),
+          sharesCount: 2,
+          isLiked: !!p.is_liked,
+        }));
+        setApiPosts(mapped);
+        setPostsSource('django');
+      } else {
+        setApiPosts(posts);
+      }
+    } catch (err) {
+      console.warn('Connecting to API fallback:', err);
+      setApiPosts(posts);
+      setPostsSource('cached');
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPostsFromApi();
+  }, []);
+
+  useEffect(() => {
+    if (apiPosts.length === 0 && posts.length > 0) {
+      setApiPosts(posts);
+    }
+  }, [posts]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -112,20 +203,88 @@ export const FeedView: React.FC<FeedViewProps> = ({
   };
   
   // Story modal & creation state
-  const [activeStory, setActiveStory] = useState<Story | null>(null);
+  const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(undefined);
   const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
   const [newStoryMediaUrl, setNewStoryMediaUrl] = useState('');
-  
-  // Interactive story likes and comments
-  const [storyLikes, setStoryLikes] = useState<Record<string, { count: number; isLiked: boolean }>>({
-    story_1: { count: 14, isLiked: false },
-    story_2: { count: 9, isLiked: true },
-    story_3: { count: 21, isLiked: false }
-  });
-  const [storyComments, setStoryComments] = useState<Record<string, { id: string; author: string; text: string; time: string }[]>>({
-    story_1: [{ id: 'sc1', author: 'Michael Botha', text: 'Clean execution! 🔥', time: '10m ago' }]
-  });
-  const [storyCommentInput, setStoryCommentInput] = useState('');
+  const [newStoryCaption, setNewStoryCaption] = useState('');
+
+  // Group stories by author so each user has exactly ONE circle on the home page with multiple slides
+  const { myStory, otherStories } = useMemo(() => {
+    let mine: Story | undefined = undefined;
+    const othersMap = new Map<string, Story>();
+
+    for (const s of stories) {
+      const isMe = s.authorName === 'Your Story' || s.authorName.toLowerCase() === currentUser.name.toLowerCase();
+      const slides: StorySlide[] = (s.slides && s.slides.length > 0)
+        ? s.slides
+        : [{ id: s.id, mediaUrl: s.mediaUrl, createdAt: s.createdAt, caption: '' }];
+
+      if (isMe) {
+        if (!mine) {
+          mine = {
+            ...s,
+            id: s.id || 'story_me',
+            authorName: currentUser.name,
+            authorAvatar: currentUser.avatar,
+            slides: [...slides]
+          };
+        } else {
+          const currentMine: Story = mine;
+          const currentSlides: StorySlide[] = currentMine.slides || [];
+          const combined: StorySlide[] = [...currentSlides];
+          for (const sl of slides) {
+            if (!combined.some((cs: StorySlide) => (cs.id && cs.id === sl.id) || (cs.mediaUrl && cs.mediaUrl === sl.mediaUrl))) {
+              combined.push(sl);
+            }
+          }
+          mine = {
+            ...currentMine,
+            hasUnseen: currentMine.hasUnseen || s.hasUnseen,
+            mediaUrl: slides[slides.length - 1]?.mediaUrl || currentMine.mediaUrl,
+            slides: combined
+          };
+        }
+      } else {
+        const key = s.authorName.trim().toLowerCase();
+        if (othersMap.has(key)) {
+          const existing: Story = othersMap.get(key)!;
+          const currentSlides: StorySlide[] = existing.slides || [];
+          const combined: StorySlide[] = [...currentSlides];
+          for (const sl of slides) {
+            if (!combined.some((cs: StorySlide) => (cs.id && cs.id === sl.id) || (cs.mediaUrl && cs.mediaUrl === sl.mediaUrl))) {
+              combined.push(sl);
+            }
+          }
+          othersMap.set(key, {
+            ...existing,
+            hasUnseen: existing.hasUnseen || s.hasUnseen,
+            mediaUrl: slides[slides.length - 1]?.mediaUrl || existing.mediaUrl,
+            slides: combined
+          });
+        } else {
+          othersMap.set(key, {
+            ...s,
+            slides: [...slides]
+          });
+        }
+      }
+    }
+
+    return {
+      myStory: mine,
+      otherStories: Array.from(othersMap.values())
+    };
+  }, [stories, currentUser.name, currentUser.avatar]);
+
+  // Combined list for story viewer modal so user can advance seamlessly between stories
+  const allActiveStories = useMemo(() => {
+    const list: Story[] = [];
+    if (myStory && myStory.slides && myStory.slides.length > 0) {
+      list.push(myStory);
+    }
+    return [...list, ...otherStories];
+  }, [myStory, otherStories]);
 
   // Comment state per post
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
@@ -140,38 +299,102 @@ export const FeedView: React.FC<FeedViewProps> = ({
   });
   const [newCommentInput, setNewCommentInput] = useState('');
 
-  const handlePostSubmit = (e: React.FormEvent) => {
+  const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!composerText.trim() && !composerMediaUrl.trim()) return;
+    if (!composerText.trim() && !composerMediaUrl.trim() && !selectedFile) return;
 
     const hashtags = composerHashtags
       .split(',')
       .map(h => h.trim().replace(/^#/, ''))
       .filter(Boolean);
 
-    const newPost: SocialPost = {
-      id: `post_${Date.now()}`,
-      authorId: currentUser.id,
-      authorName: currentUser.name,
-      authorHandle: currentUser.handle,
-      authorAvatar: currentUser.avatar,
-      authorLocation: currentUser.location,
-      createdAt: 'Just now',
-      content: composerText.trim() || 'Shared a media update with the community.',
-      hashtags: hashtags.length > 0 ? hashtags : ['SkillHub', 'YouthWorker'],
-      mediaType: composerMediaUrl ? 'image' : undefined,
-      mediaUrl: composerMediaUrl || undefined,
-      likesCount: 0,
-      commentsCount: 0,
-      sharesCount: 0,
-      isLiked: false
-    };
+    const isVideo = selectedFile
+      ? selectedFile.type.startsWith('video/')
+      : (composerMediaUrl.startsWith('data:video') || /\.(mp4|webm|mov)($|\?)/i.test(composerMediaUrl));
 
-    onAddPost(newPost);
-    setComposerText('');
-    setComposerMediaUrl('');
-    setComposerHashtags('');
-    setShowMediaInput(false);
+    setIsPublishing(true);
+    try {
+      let created: any;
+      if (selectedFile) {
+        // Construct FormData for Django REST Framework MultiPartParser
+        const formData = new FormData();
+        formData.append('content', composerText.trim() || 'Shared a media update with SkillHub ZA.');
+        formData.append('category', 'Tech & Skills');
+        if (hashtags.length > 0) {
+          formData.append('hashtags', JSON.stringify(hashtags));
+        }
+        if (isVideo) {
+          formData.append('video_file', selectedFile);
+        } else {
+          formData.append('media_file', selectedFile);
+        }
+        created = await createPost(formData);
+      } else {
+        // Direct API Call with JSON payload
+        created = await createPost({
+          content: composerText.trim(),
+          media_type: isVideo ? 'video' : (composerMediaUrl ? 'image' : 'text'),
+          media_url: isVideo ? undefined : (composerMediaUrl || undefined),
+          video_url: isVideo ? composerMediaUrl : undefined,
+          category: 'Tech & Skills',
+          hashtags: hashtags.length > 0 ? hashtags : ['SkillHubZA', 'YouthInTech']
+        });
+      }
+
+      const mediaDisplayUrl = created.media_url || created.video_url || filePreviewUrl || composerMediaUrl || undefined;
+
+      const formattedPost: SocialPost = {
+        id: created.id || `post_${Date.now()}`,
+        authorId: created.author?.id || currentUser.id,
+        authorName: created.author?.full_name || currentUser.name,
+        authorHandle: created.author?.username ? `@${created.author.username}` : currentUser.handle,
+        authorAvatar: created.author?.avatar || currentUser.avatar,
+        authorLocation: created.author?.location || currentUser.location,
+        createdAt: 'Just now',
+        content: created.content || composerText.trim(),
+        hashtags: created.hashtags || hashtags,
+        mediaType: isVideo ? 'video' : (mediaDisplayUrl ? 'image' : undefined),
+        mediaUrl: mediaDisplayUrl,
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
+        isLiked: false
+      };
+
+      setApiPosts(prev => [formattedPost, ...prev]);
+      onAddPost(formattedPost);
+      showToast('Post & file uploaded to Django REST Framework! 🚀');
+    } catch (err: any) {
+      console.warn('API post creation failed, falling back to local optimistic post:', err);
+      const fallbackUrl = filePreviewUrl || composerMediaUrl || undefined;
+      const fallbackPost: SocialPost = {
+        id: `post_${Date.now()}`,
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+        authorHandle: currentUser.handle,
+        authorAvatar: currentUser.avatar,
+        authorLocation: currentUser.location,
+        createdAt: 'Just now',
+        content: composerText.trim() || 'Shared a media update with the community.',
+        hashtags: hashtags.length > 0 ? hashtags : ['SkillHub', 'YouthWorker'],
+        mediaType: isVideo ? 'video' : (fallbackUrl ? 'image' : undefined),
+        mediaUrl: fallbackUrl,
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
+        isLiked: false
+      };
+      setApiPosts(prev => [fallbackPost, ...prev]);
+      onAddPost(fallbackPost);
+      showToast('Post saved locally.');
+    } finally {
+      setIsPublishing(false);
+      setComposerText('');
+      setComposerMediaUrl('');
+      setComposerHashtags('');
+      handleClearSelectedFile();
+      setShowMediaInput(false);
+    }
   };
 
   const handleAddComment = (postId: string) => {
@@ -195,53 +418,113 @@ export const FeedView: React.FC<FeedViewProps> = ({
       {/* Main Feed Column (8 cols) */}
       <div className="lg:col-span-8 space-y-6">
         
-        {/* Stories Centered Horizontal Carousel (Max 16) */}
-        <div className="bg-[#1e1e1e]/60 p-4 rounded-3xl border border-neutral-800/80 shadow-lg">
-          <div className="flex items-center justify-center gap-4 overflow-x-auto pb-1 scrollbar-none max-w-full mx-auto">
-            
-            {/* Add Story Button ("Your Story") */}
-            <button
-              onClick={() => setIsCreateStoryOpen(true)}
-              className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
-            >
-              <div className="relative w-16 h-16 rounded-full p-0.5 ring-2 ring-emerald-500 transition-all group-hover:scale-105">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-full h-full rounded-full object-cover border-2 border-[#121212]"
-                />
-                <div className="absolute bottom-0 right-0 p-1 bg-emerald-500 text-slate-950 rounded-full ring-2 ring-[#121212] shadow-md">
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                </div>
+        {/* Django Backend Architecture Notice & Modal Trigger */}
+        {onOpenDjangoBackend && (
+          <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-indigo-950/70 border border-emerald-500/30 rounded-3xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0 shadow-inner">
+                <Server className="w-5 h-5 text-emerald-400" />
               </div>
-              <span className="text-[11px] font-bold text-emerald-400 max-w-[75px] truncate text-center">
-                + Your Story
-              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs sm:text-sm font-black text-white">Django REST Framework Backend Initialized</h3>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">Phase 1</span>
+                </div>
+                <p className="text-[11px] text-slate-300">Custom User model, DRF serializers, Admin dashboards, and relational schema for posts, reels, events & marketplace.</p>
+              </div>
+            </div>
+            <button
+              onClick={onOpenDjangoBackend}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow-md transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"
+            >
+              <Server className="w-4 h-4" />
+              <span>Explore DRF API Hub</span>
             </button>
+          </div>
+        )}
 
-            {/* Other Users' Stories (Max 16) */}
-            {stories.slice(0, 16).map((story) => (
+        {/* Stories Centered Horizontal Carousel (One Window/Circle Per User) */}
+        <div className="bg-[#1e1e1e]/60 p-4 rounded-3xl border border-neutral-800/80 shadow-lg">
+          <div className="flex items-center justify-start sm:justify-center gap-4 overflow-x-auto pb-1 scrollbar-none max-w-full mx-auto">
+            
+            {/* Current User Story Circle ("Your Story") */}
+            <div className="flex flex-col items-center gap-1.5 shrink-0">
               <button
-                key={story.id}
-                onClick={() => setActiveStory(story)}
-                className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
+                type="button"
+                onClick={() => {
+                  if (myStory && myStory.slides && myStory.slides.length > 0) {
+                    setSelectedStoryId(myStory.id);
+                    setIsStoryViewerOpen(true);
+                  } else {
+                    setIsCreateStoryOpen(true);
+                  }
+                }}
+                className="relative flex flex-col items-center group focus:outline-none"
+                title={myStory && myStory.slides && myStory.slides.length > 0 ? `View Your Story (${myStory.slides.length} slides)` : "Add to Your Story"}
               >
-                <div className={`w-16 h-16 rounded-full p-0.5 transition-all group-hover:scale-105 ${
-                  story.hasUnseen
-                    ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500 p-[2px]'
-                    : 'ring-2 ring-neutral-700'
+                <div className={`w-16 h-16 rounded-full p-0.5 transition-all duration-200 group-hover:scale-105 ${
+                  myStory && myStory.slides && myStory.slides.length > 0
+                    ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500 p-[2.5px] shadow-lg shadow-emerald-500/10'
+                    : 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#121212]'
                 }`}>
                   <img
-                    src={story.authorAvatar}
-                    alt={story.authorName}
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
                     className="w-full h-full rounded-full object-cover border-2 border-[#121212]"
                   />
                 </div>
-                <span className="text-[11px] font-bold text-neutral-300 max-w-[75px] truncate text-center">
-                  {story.authorName}
-                </span>
+
+                {/* Quick Add (+) overlay badge */}
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCreateStoryOpen(true);
+                  }}
+                  className="absolute bottom-0 right-0 p-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-full ring-2 ring-[#121212] shadow-md transition-transform hover:scale-115 cursor-pointer z-10"
+                  title="Add another slide to your story"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                </div>
               </button>
-            ))}
+
+              <span className="text-[11px] font-bold text-emerald-400 max-w-[85px] truncate text-center">
+                {myStory && myStory.slides && myStory.slides.length > 0 
+                  ? `Your Story (${myStory.slides.length})` 
+                  : '+ Your Story'}
+              </span>
+            </div>
+
+            {/* Other Users' Stories (Exactly 1 circle per user, holding all their slides in 1 window) */}
+            {otherStories.slice(0, 16).map((story) => {
+              const slideCount = (story.slides && story.slides.length > 0) ? story.slides.length : 1;
+              return (
+                <button
+                  key={story.id || story.authorName}
+                  type="button"
+                  onClick={() => {
+                    setSelectedStoryId(story.id);
+                    setIsStoryViewerOpen(true);
+                  }}
+                  className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
+                  title={`View ${story.authorName}'s story (${slideCount} ${slideCount > 1 ? 'slides' : 'slide'})`}
+                >
+                  <div className={`w-16 h-16 rounded-full p-0.5 transition-all duration-200 group-hover:scale-105 ${
+                    story.hasUnseen
+                      ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500 p-[2.5px] shadow-lg'
+                      : 'ring-2 ring-neutral-700'
+                  }`}>
+                    <img
+                      src={story.authorAvatar}
+                      alt={story.authorName}
+                      className="w-full h-full rounded-full object-cover border-2 border-[#121212]"
+                    />
+                  </div>
+                  <span className="text-[11px] font-bold text-neutral-300 max-w-[75px] truncate text-center">
+                    {story.authorName}
+                  </span>
+                </button>
+              );
+            })}
 
           </div>
         </div>
@@ -297,8 +580,40 @@ export const FeedView: React.FC<FeedViewProps> = ({
                 </div>
               )}
 
-              {/* Inline Media Thumbnail Preview */}
-              {composerMediaUrl && (
+              {/* Hidden Native File Input for Direct Device Image/Video Uploads */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*,video/*"
+                className="hidden"
+              />
+
+              {/* Inline Selected Device File Preview (URL.createObjectURL) */}
+              {selectedFile && filePreviewUrl && (
+                <div className="relative w-fit group border-2 border-emerald-500/50 rounded-2xl overflow-hidden shadow-lg bg-black">
+                  {selectedFile.type.startsWith('video/') ? (
+                    <video src={filePreviewUrl} controls className="h-36 w-auto max-w-full object-contain" />
+                  ) : (
+                    <img src={filePreviewUrl} alt="Selected preview" className="h-32 w-auto max-w-full object-cover" />
+                  )}
+                  <div className="flex items-center justify-between gap-3 px-3 py-1.5 bg-slate-900/90 text-[11px] text-slate-300">
+                    <span className="font-mono truncate max-w-[200px]">{selectedFile.name}</span>
+                    <span className="text-emerald-400 font-bold shrink-0">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedFile}
+                    className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-rose-600 text-white rounded-full transition z-10 shadow-md"
+                    title="Remove file"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Inline Media URL Thumbnail Preview */}
+              {!selectedFile && composerMediaUrl && (
                 <div className="relative w-fit group border border-emerald-500/40 rounded-2xl overflow-hidden shadow-md bg-black">
                   {composerMediaUrl.startsWith('data:video') || /\.(mp4|webm|mov|mkv|avi)($|\?)/i.test(composerMediaUrl) ? (
                     <video src={composerMediaUrl} controls className="h-32 w-auto max-w-full object-contain" />
@@ -320,11 +635,12 @@ export const FeedView: React.FC<FeedViewProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowMediaInput(!showMediaInput)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition-all border border-emerald-500/30 cursor-pointer"
+                    title="Upload image or video from your device"
                   >
                     <Image className="w-4 h-4 text-emerald-400" />
-                    <span>Media Link</span>
+                    <span>Upload Media</span>
                   </button>
                   <button
                     type="button"
@@ -332,16 +648,23 @@ export const FeedView: React.FC<FeedViewProps> = ({
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all"
                   >
                     <Video className="w-4 h-4 text-amber-400" />
-                    <span>Video</span>
+                    <span>Media Link</span>
                   </button>
                 </div>
 
                 <button
                   onClick={handlePostSubmit}
-                  disabled={!composerText.trim()}
-                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md"
+                  disabled={(!composerText.trim() && !composerMediaUrl.trim() && !selectedFile) || isPublishing}
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
-                  Publish Post
+                  {isPublishing ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <span>Publish Post</span>
+                  )}
                 </button>
               </div>
 
@@ -349,9 +672,31 @@ export const FeedView: React.FC<FeedViewProps> = ({
           </div>
         </div>
 
+        {/* Posts Stream Header */}
+        <div className="flex items-center justify-between px-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-bold text-slate-300">
+              {postsSource === 'django' ? 'Live Django REST API Stream' : 'Activity Feed'}
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">
+              ({(apiPosts.length > 0 ? apiPosts : posts).length} posts)
+            </span>
+          </div>
+          <button
+            onClick={fetchPostsFromApi}
+            disabled={isLoadingPosts}
+            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
+            title="Refresh feed from Django API"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPosts ? 'animate-spin text-emerald-400' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+
         {/* Posts Stream */}
         <div className="space-y-6">
-          {posts.map((post) => (
+          {(apiPosts.length > 0 ? apiPosts : posts).map((post) => (
             <article
               key={post.id}
               className="bg-[#1e1e1e] rounded-3xl border border-neutral-800 shadow-xl overflow-hidden"
@@ -581,8 +926,26 @@ export const FeedView: React.FC<FeedViewProps> = ({
                     
                     {/* Like Action */}
                     <button
-                      onClick={() => onLikePost(post.id)}
-                      className={`flex items-center gap-1.5 text-xs font-extrabold transition-all ${
+                      onClick={async () => {
+                        setApiPosts(prev => prev.map(p => {
+                          if (p.id === post.id) {
+                            const nextLiked = !p.isLiked;
+                            return {
+                              ...p,
+                              isLiked: nextLiked,
+                              likesCount: nextLiked ? p.likesCount + 1 : Math.max(0, p.likesCount - 1)
+                            };
+                          }
+                          return p;
+                        }));
+                        onLikePost(post.id);
+                        try {
+                          await toggleLikePost(post.id);
+                        } catch (err) {
+                          console.warn('API like sync:', err);
+                        }
+                      }}
+                      className={`flex items-center gap-1.5 text-xs font-extrabold transition-all cursor-pointer ${
                         post.isLiked ? 'text-amber-400' : 'text-neutral-400 hover:text-white'
                       }`}
                     >
@@ -787,207 +1150,225 @@ export const FeedView: React.FC<FeedViewProps> = ({
 
       </div>
 
-      {/* Story Fullscreen Viewer Modal */}
-      {activeStory && (
-        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-[#121212] rounded-3xl border border-neutral-800 overflow-hidden relative space-y-3">
-            
-            <div className="relative h-[480px]">
-              <img
-                src={activeStory.mediaUrl}
-                alt={activeStory.authorName}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-0 inset-x-0 p-4 bg-gradient-to-b from-black/90 via-black/40 to-transparent flex items-center justify-between text-white">
-                
-                {/* Author Profile Info (Clickable to view Profile) */}
-                <button
-                  onClick={() => {
-                    setActiveStory(null);
-                    onSelectView('profile');
-                  }}
-                  className="flex items-center gap-3 hover:opacity-80 transition text-left group"
-                  title="Click to view user profile info"
-                >
-                  <img src={activeStory.authorAvatar} alt="" className="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover" />
-                  <div>
-                    <span className="font-extrabold text-xs block group-hover:underline text-white">{activeStory.authorName}</span>
-                    <span className="text-[10px] text-emerald-400 font-bold">View Profile Info • {activeStory.createdAt}</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setActiveStory(null)}
-                  className="p-1.5 bg-black/60 hover:bg-black rounded-full text-white transition"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Floating Story Likes Overlay */}
-              <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-black/70 backdrop-blur-xs px-3 py-1.5 rounded-full border border-white/10">
-                <button
-                  onClick={() => {
-                    const current = storyLikes[activeStory.id] || { count: 8, isLiked: false };
-                    setStoryLikes(prev => ({
-                      ...prev,
-                      [activeStory.id]: {
-                        count: current.isLiked ? current.count - 1 : current.count + 1,
-                        isLiked: !current.isLiked
-                      }
-                    }));
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-bold transition"
-                >
-                  <Heart className={`w-4 h-4 ${storyLikes[activeStory.id]?.isLiked ? 'fill-rose-500 text-rose-500' : 'text-white'}`} />
-                  <span className="text-white">{storyLikes[activeStory.id]?.count || 12}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Story Comments & Replies Section */}
-            <div className="p-4 space-y-3 bg-[#181818] border-t border-neutral-800">
-              <div className="max-h-24 overflow-y-auto space-y-1.5 scrollbar-none">
-                {(storyComments[activeStory.id] || []).map((c) => (
-                  <div key={c.id} className="bg-[#222222] p-2 rounded-xl text-xs flex justify-between gap-2">
-                    <div>
-                      <span className="font-bold text-emerald-400 block text-[11px]">{c.author}</span>
-                      <p className="text-neutral-200 text-[11px]">{c.text}</p>
-                    </div>
-                    <span className="text-[9px] text-neutral-500">{c.time}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder={`Comment on ${activeStory.authorName}'s story...`}
-                  value={storyCommentInput}
-                  onChange={(e) => setStoryCommentInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && storyCommentInput.trim()) {
-                      const newC = {
-                        id: `sc_${Date.now()}`,
-                        author: currentUser.name,
-                        text: storyCommentInput,
-                        time: 'Just now'
-                      };
-                      setStoryComments(prev => ({
-                        ...prev,
-                        [activeStory.id]: [...(prev[activeStory.id] || []), newC]
-                      }));
-                      setStoryCommentInput('');
-                    }
-                  }}
-                  className="flex-1 bg-[#121212] border border-neutral-700 rounded-2xl px-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-                <button
-                  onClick={() => {
-                    if (!storyCommentInput.trim()) return;
-                    const newC = {
-                      id: `sc_${Date.now()}`,
-                      author: currentUser.name,
-                      text: storyCommentInput,
-                      time: 'Just now'
-                    };
-                    setStoryComments(prev => ({
-                      ...prev,
-                      [activeStory.id]: [...(prev[activeStory.id] || []), newC]
-                    }));
-                    setStoryCommentInput('');
-                  }}
-                  className="p-2.5 bg-emerald-500 text-slate-950 rounded-2xl font-bold hover:bg-emerald-400 transition"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
+      {/* Multi-Slide Fullscreen Story Viewer Modal (All stories in single viewer window) */}
+      <StoryViewerModal
+        isOpen={isStoryViewerOpen}
+        stories={allActiveStories}
+        initialStoryId={selectedStoryId}
+        currentUser={currentUser}
+        onClose={() => setIsStoryViewerOpen(false)}
+        onAddSlide={() => setIsCreateStoryOpen(true)}
+        onDeleteSlide={onDeleteStorySlide}
+        onSelectProfile={(authorName) => {
+          if (onOpenProfile) {
+            onOpenProfile({ name: authorName });
+          } else {
+            onSelectView('profile');
+          }
+        }}
+      />
 
       {/* Create Story Modal (60s Video / Image from Link or Local Device) */}
       {isCreateStoryOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#1e1e1e] rounded-3xl border border-neutral-800 max-w-md w-full p-6 shadow-2xl space-y-4 text-white animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
+          <div className="bg-[#1e1e1e] rounded-3xl border border-neutral-800 max-w-md w-full shadow-2xl text-white animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="p-5 pb-3 border-b border-neutral-800/80 flex items-center justify-between shrink-0">
               <div>
-                <h3 className="text-lg font-black text-white">Add 60s Story</h3>
-                <p className="text-xs text-neutral-400">Share a 60-second video or image update with your community</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-white">Post Short Video / Story Slide</h3>
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                    <Video className="w-3 h-3" /> Max 60s
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-400 mt-0.5">Post a short video or photo slide to your single story window</p>
               </div>
-              <button onClick={() => setIsCreateStoryOpen(false)} className="p-1 text-neutral-400 hover:text-white">
+              <button 
+                type="button"
+                onClick={() => setIsCreateStoryOpen(false)} 
+                className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            {/* Modal Scrollable Body */}
+            <div className="p-5 space-y-4 overflow-y-auto flex-1 scrollbar-thin">
+              {/* Local File Upload */}
               <div>
-                <label className="text-xs font-bold text-neutral-300 block mb-1.5">
-                  Upload 60s Story / Image from Device (Auto Malware Scanned)
+                <label className="text-xs font-bold text-neutral-300 block mb-1.5 flex items-center justify-between">
+                  <span>Upload Short Video / Media from Device</span>
+                  <span className="text-[10px] text-emerald-400 font-bold">Auto Malware Scanned</span>
                 </label>
                 <FileUploadWithScan
-                  label="Select Local Media File"
+                  label="Select Short Video (MP4/WebM) or Photo"
+                  accept="video/*,image/*"
                   onFileSelect={(url) => setNewStoryMediaUrl(url)}
                 />
               </div>
 
-              <div className="text-[10px] font-black text-neutral-400 text-center uppercase tracking-wider">
-                OR PASTE MEDIA WEB LINK
+              {/* Or Web Link */}
+              <div>
+                {newStoryMediaUrl.startsWith('data:') ? (
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                    <div className="flex items-center gap-2">
+                      <Film className="w-4 h-4 text-emerald-400" />
+                      <span>Device media attached ({newStoryMediaUrl.startsWith('data:video') ? 'Short Video Story' : 'Photo Story'})</span>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setNewStoryMediaUrl('')} 
+                      className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition"
+                      title="Clear attached media"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs font-bold text-neutral-300 block mb-1.5">
+                      Or Paste Video / Photo Web URL
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://.../video.mp4 or web image link"
+                      value={newStoryMediaUrl}
+                      onChange={(e) => setNewStoryMediaUrl(e.target.value)}
+                      className="w-full bg-[#121212] border border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-semibold"
+                    />
+                  </div>
+                )}
               </div>
 
+              {/* Quick Sample Video Clips */}
+              {!newStoryMediaUrl && (
+                <div>
+                  <span className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block mb-1.5">
+                    Or Try Sample Short Videos:
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewStoryMediaUrl('https://assets.mixkit.co/videos/preview/mixkit-software-developer-working-on-code-41315-large.mp4')}
+                      className="flex-1 px-2.5 py-1.5 rounded-xl bg-neutral-800/80 hover:bg-neutral-700 text-neutral-200 text-[11px] font-bold border border-neutral-700 transition flex items-center justify-center gap-1.5 text-center"
+                    >
+                      <Film className="w-3 h-3 text-emerald-400" />
+                      <span>Coding Video</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewStoryMediaUrl('https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-man-working-on-a-computer-keyboard-41314-large.mp4')}
+                      className="flex-1 px-2.5 py-1.5 rounded-xl bg-neutral-800/80 hover:bg-neutral-700 text-neutral-200 text-[11px] font-bold border border-neutral-700 transition flex items-center justify-center gap-1.5 text-center"
+                    >
+                      <Film className="w-3 h-3 text-emerald-400" />
+                      <span>Keyboard Video</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Caption */}
               <div>
+                <label className="text-xs font-bold text-neutral-300 block mb-1.5">
+                  Story Caption (Optional)
+                </label>
                 <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/... or 60s video URL"
-                  value={newStoryMediaUrl}
-                  onChange={(e) => setNewStoryMediaUrl(e.target.value)}
+                  type="text"
+                  placeholder="e.g. Working late on the new feature! ⚡"
+                  value={newStoryCaption}
+                  onChange={(e) => setNewStoryCaption(e.target.value)}
                   className="w-full bg-[#121212] border border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-semibold"
                 />
               </div>
 
-              {newStoryMediaUrl && (
-                <div className="rounded-2xl overflow-hidden max-h-40 border border-emerald-500/40">
-                  <img src={newStoryMediaUrl} alt="Story preview" className="w-full h-40 object-cover" />
+              {/* External URL preview (only when web URL entered, avoiding duplicate when FileUploadWithScan already renders clean safe player) */}
+              {!newStoryMediaUrl.startsWith('data:') && newStoryMediaUrl.trim() && (
+                <div className="rounded-2xl overflow-hidden max-h-48 border border-emerald-500/40 bg-black flex items-center justify-center">
+                  {(newStoryMediaUrl.toLowerCase().includes('.mp4') ||
+                    newStoryMediaUrl.toLowerCase().includes('.webm') ||
+                    newStoryMediaUrl.toLowerCase().includes('video')) ? (
+                    <video 
+                      src={newStoryMediaUrl} 
+                      controls 
+                      autoPlay 
+                      muted 
+                      loop 
+                      className="w-full max-h-48 object-contain" 
+                    />
+                  ) : (
+                    <img 
+                      src={newStoryMediaUrl} 
+                      alt="Story preview" 
+                      className="w-full max-h-48 object-cover" 
+                    />
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="pt-2 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsCreateStoryOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-neutral-400 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!newStoryMediaUrl.trim()) {
-                    alert('Please select or paste a media file for your story.');
-                    return;
-                  }
-                  const newS: Story = {
-                    id: `story_${Date.now()}`,
-                    authorName: currentUser.name,
-                    authorAvatar: currentUser.avatar,
-                    mediaUrl: newStoryMediaUrl,
-                    createdAt: 'Just now',
-                    hasUnseen: true
-                  };
-                  if (onAddStory) {
-                    onAddStory(newS);
-                  }
-                  setIsCreateStoryOpen(false);
-                  setNewStoryMediaUrl('');
-                }}
-                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition"
-              >
-                Publish Story
-              </button>
+            {/* Modal Fixed Footer - NEVER cut off */}
+            <div className="p-4 border-t border-neutral-800/80 bg-[#171717] flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-neutral-400 font-medium">
+                {newStoryMediaUrl ? (
+                  (newStoryMediaUrl.startsWith('data:video') ||
+                   newStoryMediaUrl.toLowerCase().includes('.mp4') ||
+                   newStoryMediaUrl.toLowerCase().includes('.webm') ||
+                   newStoryMediaUrl.toLowerCase().includes('video'))
+                    ? 'Ready to post video story slide'
+                    : 'Ready to post photo story slide'
+                ) : 'Select a video or image to post'}
+              </span>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateStoryOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-neutral-400 hover:text-white rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!newStoryMediaUrl.trim()}
+                  onClick={() => {
+                    if (!newStoryMediaUrl.trim()) {
+                      alert('Please select or paste a media file for your story slide.');
+                      return;
+                    }
+                    const newS: Story = {
+                      id: `story_${Date.now()}`,
+                      authorName: currentUser.name,
+                      authorAvatar: currentUser.avatar,
+                      mediaUrl: newStoryMediaUrl,
+                      createdAt: 'Just now',
+                      hasUnseen: true,
+                      slides: [{
+                        id: `slide_${Date.now()}`,
+                        mediaUrl: newStoryMediaUrl,
+                        createdAt: 'Just now',
+                        caption: newStoryCaption.trim()
+                      }]
+                    };
+                    if (onAddStory) {
+                      onAddStory(newS);
+                    }
+                    setIsCreateStoryOpen(false);
+                    setNewStoryMediaUrl('');
+                    setNewStoryCaption('');
+                    showToast('Short video story posted to your story window!');
+                  }}
+                  className={`px-5 py-2.5 font-black text-xs rounded-xl shadow-md transition flex items-center gap-2 ${
+                    newStoryMediaUrl.trim()
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 hover:scale-102'
+                      : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Post to Story</span>
+                </button>
+              </div>
             </div>
+
           </div>
         </div>
       )}

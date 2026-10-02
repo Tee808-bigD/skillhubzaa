@@ -664,7 +664,21 @@ export const initialStories: Story[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
     mediaUrl: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80',
     createdAt: 'Just now',
-    hasUnseen: false
+    hasUnseen: false,
+    slides: [
+      {
+        id: 'slide_me_1',
+        mediaUrl: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80',
+        createdAt: 'Just now',
+        caption: 'Working late on the community platform update! 💻⚡'
+      },
+      {
+        id: 'slide_me_2',
+        mediaUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&auto=format&fit=crop&q=80',
+        createdAt: '1h ago',
+        caption: 'Planning the youth mentorship session for tomorrow! 🤝'
+      }
+    ]
   },
   {
     id: 'story_sarah',
@@ -672,7 +686,21 @@ export const initialStories: Story[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
     mediaUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80',
     createdAt: '2h ago',
-    hasUnseen: true
+    hasUnseen: true,
+    slides: [
+      {
+        id: 'slide_sarah_1',
+        mediaUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80',
+        createdAt: '2h ago',
+        caption: 'Inspecting copper pipe fittings at the site 🛠️'
+      },
+      {
+        id: 'slide_sarah_2',
+        mediaUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&auto=format&fit=crop&q=80',
+        createdAt: '1h ago',
+        caption: 'All set and pressure tested! Ready for inspection ✅'
+      }
+    ]
   },
   {
     id: 'story_michael',
@@ -680,7 +708,21 @@ export const initialStories: Story[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
     mediaUrl: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=600&auto=format&fit=crop&q=80',
     createdAt: '4h ago',
-    hasUnseen: true
+    hasUnseen: true,
+    slides: [
+      {
+        id: 'slide_mike_1',
+        mediaUrl: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=600&auto=format&fit=crop&q=80',
+        createdAt: '4h ago',
+        caption: 'Selecting raw reclaimed Kiaat timber for the dining set 🪵'
+      },
+      {
+        id: 'slide_mike_2',
+        mediaUrl: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop&q=80',
+        createdAt: '2h ago',
+        caption: 'Hand oiling complete! Satin shine coming through ✨'
+      }
+    ]
   },
   {
     id: 'story_lisa',
@@ -688,7 +730,15 @@ export const initialStories: Story[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
     mediaUrl: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80',
     createdAt: '6h ago',
-    hasUnseen: true
+    hasUnseen: true,
+    slides: [
+      {
+        id: 'slide_lisa_1',
+        mediaUrl: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80',
+        createdAt: '6h ago',
+        caption: 'Final color grading session for the local brand shoot 🎬🎨'
+      }
+    ]
   },
   {
     id: 'story_themba',
@@ -696,7 +746,15 @@ export const initialStories: Story[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
     mediaUrl: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?w=600&auto=format&fit=crop&q=80',
     createdAt: '8h ago',
-    hasUnseen: false
+    hasUnseen: false,
+    slides: [
+      {
+        id: 'slide_themba_1',
+        mediaUrl: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?w=600&auto=format&fit=crop&q=80',
+        createdAt: '8h ago',
+        caption: 'Solar panel array commissioned in Soweto! Clean power ☀️🇿🇦'
+      }
+    ]
   }
 ];
 
