@@ -78,9 +78,15 @@ export interface RegisterPayload {
   username: string;
   email: string;
   password: string;
-  confirm_password: string;
+  confirm_password?: string;
+  password2?: string;
   full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string | null;
   role?: 'youth' | 'mentor' | 'employer' | 'trainer';
+  terms_accepted?: boolean;
+  marketing_consent?: boolean;
 }
 
 export interface RefreshTokenResponse {

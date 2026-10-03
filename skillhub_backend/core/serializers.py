@@ -26,13 +26,22 @@ class RegisterSerializer(serializers.ModelSerializer):
     Handles user registration with username & email uniqueness,
     password confirmation, password strength validation, role assignment,
     POPIA consent recording, and age verification.
+    Supports both confirm_password & password2, full_name & first_name/last_name,
+    and multiple date formats (ISO YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY).
     """
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    confirm_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    confirm_password = serializers.CharField(write_only=True, required=False, allow_blank=True, style={'input_type': 'password'})
+    password2 = serializers.CharField(write_only=True, required=False, allow_blank=True, style={'input_type': 'password'})
     email = serializers.EmailField(required=True)
     full_name = serializers.CharField(required=False, write_only=True, allow_blank=True)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
     role = serializers.CharField(required=False, default='youth')
-    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    date_of_birth = serializers.DateField(
+        required=False,
+        allow_null=True,
+        input_formats=['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', 'iso-8601']
+    )
     marketing_consent = serializers.BooleanField(required=False, default=False)
     terms_accepted = serializers.BooleanField(required=False, default=True)
 
@@ -42,9 +51,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             'id',
             'username',
             'email',
+            'first_name',
+            'last_name',
             'full_name',
             'password',
             'confirm_password',
+            'password2',
             'role',
             'date_of_birth',
             'marketing_consent',
@@ -52,21 +64,35 @@ class RegisterSerializer(serializers.ModelSerializer):
         ]
 
     def validate_username(self, value):
-        if User.objects.filter(username__iexact=value).exists():
+        if not value:
+            raise serializers.ValidationError("Username is required.")
+        norm_username = value.strip()
+        if User.objects.filter(username__iexact=norm_username).exists():
             raise serializers.ValidationError("A user with this username already exists.")
-        return value
+        return norm_username
 
     def validate_email(self, value):
-        if User.objects.filter(email__iexact=value).exists():
+        if not value:
+            raise serializers.ValidationError("Email address is required.")
+        norm_email = value.strip().lower()
+        if User.objects.filter(email__iexact=norm_email).exists():
             raise serializers.ValidationError("A user with this email address already exists.")
-        return value
+        return norm_email
 
     def validate(self, attrs):
-        if attrs.get('password') != attrs.get('confirm_password'):
-            raise serializers.ValidationError({"confirm_password": "Password fields didn't match."})
+        pwd = attrs.get('password')
+        conf = attrs.get('confirm_password') or attrs.get('password2')
+        if not conf:
+            raise serializers.ValidationError({
+                "confirm_password": "Password confirmation is required."
+            })
+        if pwd != conf:
+            raise serializers.ValidationError({
+                "confirm_password": "Password fields didn't match."
+            })
         
         # Enforce configured password validators (including ComplexPasswordValidator)
-        validate_password(attrs['password'])
+        validate_password(pwd)
 
         # Age Gate Validation (COPPA & POPIA child information protection)
         dob = attrs.get('date_of_birth')
@@ -75,7 +101,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
             if age < 13:
                 raise serializers.ValidationError({
-                    "date_of_birth": "You must be at least 13 years old to create an account on SkillHub ZA."
+                    "date_of_birth": "You must be at least 13 years old to create an account on SkillHub ZA under South African Child Online Safety guidelines."
                 })
             if age < 18:
                 attrs['is_minor'] = True
@@ -88,7 +114,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('confirm_password', None)
+        validated_data.pop('password2', None)
         full_name = validated_data.pop('full_name', '')
+        first_name = validated_data.pop('first_name', '')
+        last_name = validated_data.pop('last_name', '')
         password = validated_data.pop('password')
         role = validated_data.pop('role', 'youth')
         date_of_birth = validated_data.pop('date_of_birth', None)
@@ -97,9 +126,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         is_minor = validated_data.pop('is_minor', False)
         parental_consent_token = validated_data.pop('parental_consent_token', None)
         
-        first_name = ''
-        last_name = ''
-        if full_name:
+        if full_name and not (first_name or last_name):
             parts = full_name.strip().split(' ', 1)
             first_name = parts[0]
             last_name = parts[1] if len(parts) > 1 else ''

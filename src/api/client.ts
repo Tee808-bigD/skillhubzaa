@@ -188,8 +188,98 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Comprehensive logging for debugging Django REST Framework interactions
+    if (error.response) {
+      console.error(
+        `[DRF API Error] Status: ${error.response.status} (${error.response.statusText}) | Endpoint: ${error.config?.baseURL || ''}${error.config?.url}`,
+        '\nPayload sent:', error.config?.data,
+        '\nResponse received from Django:', error.response.data
+      );
+    } else if (error.request) {
+      console.error(
+        `[DRF Network Error] No response received from server at: ${error.config?.baseURL || ''}${error.config?.url}`,
+        '\nIs Ngrok active and forwarding to Django port 8000?',
+        error.message
+      );
+    } else {
+      console.error('[DRF Request Setup Error]:', error.message);
+    }
+
     return Promise.reject(error);
   }
 );
+
+/**
+ * Extracts and formats human-readable error messages from Django REST Framework responses.
+ * Converts {"username": ["..."], "date_of_birth": ["..."]} into formatted strings.
+ */
+export const extractDjangoErrorMessage = (err: any): string => {
+  if (!err) return 'An unexpected error occurred.';
+  const data = err.response?.data;
+
+  // Log raw data so developer can inspect it in DevTools Console
+  if (data) {
+    console.warn('[Django Error Data]:', data);
+  }
+
+  if (!data) {
+    if (err.message && err.message.includes('Network Error')) {
+      return 'Network Error: Cannot connect to the backend server. Please verify your Ngrok tunnel is running on port 8000.';
+    }
+    return err.message || 'Server is unreachable. Please check your internet connection.';
+  }
+
+  // If DRF returned a plain text string or HTML error page
+  if (typeof data === 'string') {
+    if (data.includes('<!DOCTYPE html>') || data.includes('<html')) {
+      return `Server Error (${err.response?.status || 500}). Django returned an HTML error. Check Django console logs.`;
+    }
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.join(' ');
+  }
+
+  if (typeof data === 'object') {
+    // If standard detail message is present
+    if (data.detail && typeof data.detail === 'string') {
+      return data.detail;
+    }
+
+    const messages: string[] = [];
+
+    // Check non_field_errors first
+    if (data.non_field_errors) {
+      const nfe = Array.isArray(data.non_field_errors) ? data.non_field_errors.join(' ') : String(data.non_field_errors);
+      messages.push(nfe);
+    }
+
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'non_field_errors' || key === 'detail') continue;
+
+      const formattedKey = key
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+
+      let text = '';
+      if (Array.isArray(value)) {
+        text = value.join(' ');
+      } else if (typeof value === 'object' && value !== null) {
+        text = JSON.stringify(value);
+      } else {
+        text = String(value);
+      }
+
+      messages.push(`${formattedKey}: ${text}`);
+    }
+
+    if (messages.length > 0) {
+      return messages.join(' | ');
+    }
+  }
+
+  return 'Registration failed. Please review your details and try again.';
+};
 
 export default apiClient;

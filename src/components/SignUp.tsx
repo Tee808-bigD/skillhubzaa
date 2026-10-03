@@ -16,7 +16,8 @@ import {
   FileText,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { UserSummary } from '../api/types';
+import { UserSummary, RegisterPayload } from '../api/types';
+import { extractDjangoErrorMessage } from '../api/client';
 import LegalModal, { LegalDocType } from './LegalModal';
 
 interface SignUpProps {
@@ -87,6 +88,50 @@ export const SignUp: React.FC<SignUpProps> = ({
     return { label: 'Strong', score: 3, color: 'bg-emerald-500' };
   }, [password, passwordCriteria]);
 
+  /**
+   * Helper to ensure Date of Birth is strictly formatted as ISO YYYY-MM-DD.
+   * Handles inputs like '09/28/2003', '2003-09-28', or standard date strings.
+   */
+  const formatBirthDateToISO = (rawDate: string): string => {
+    if (!rawDate) return '';
+    const trimmed = rawDate.trim();
+    // Already in YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+    // Handle MM/DD/YYYY or DD/MM/YYYY with slashes
+    if (trimmed.includes('/')) {
+      const parts = trimmed.split('/');
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          // e.g. 09/28/2003 -> month: 09, day: 28, year: 2003
+          const year = parts[2];
+          const month = parts[0].padStart(2, '0');
+          const day = parts[1].padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        } else if (parts[0].length === 4) {
+          // e.g. 2003/09/28
+          return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        }
+      }
+    }
+    // Handle MM-DD-YYYY with dashes
+    if (trimmed.includes('-')) {
+      const parts = trimmed.split('-');
+      if (parts.length === 3 && parts[2].length === 4) {
+        return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+      }
+    }
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      const yyyy = parsed.getFullYear();
+      const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+      const dd = String(parsed.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return trimmed;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -119,33 +164,45 @@ export const SignUp: React.FC<SignUpProps> = ({
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    // Split Full Name into First Name & Last Name for Django User model compatibility
+    const trimmedFullName = fullName.trim();
+    const nameParts = trimmedFullName ? trimmedFullName.split(/\s+/) : [];
+    const firstName = nameParts[0] || username.trim();
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Convert Date of Birth to ISO YYYY-MM-DD
+    const isoDateOfBirth = formatBirthDateToISO(dateOfBirth);
+
+    // Build payload compatible with all standard and custom Django REST Framework serializers
+    const registrationPayload: RegisterPayload = {
+      username: username.trim(),
+      email: email.trim(),
+      password,
+      confirm_password: confirmPassword,
+      password2: confirmPassword, // Included for standard SimpleJWT & DRF User serializers
+      full_name: trimmedFullName || username.trim(),
+      first_name: firstName,
+      last_name: lastName,
+      date_of_birth: isoDateOfBirth || null,
+      role,
+      terms_accepted: agreeTerms,
+      marketing_consent: marketingConsent,
+    };
+
     try {
-      const createdUser = await register({
-        username: username.trim(),
-        email: email.trim(),
-        password,
-        confirm_password: confirmPassword,
-        full_name: fullName.trim(),
-        role,
-      });
+      const createdUser = await register(registrationPayload);
 
       setSuccessMessage(`Account created! Welcome, ${createdUser.full_name || createdUser.username}. Logging you in...`);
       setTimeout(() => {
         if (onSuccess) onSuccess(createdUser);
       }, 500);
     } catch (err: any) {
-      console.error('Registration error:', err);
-      const data = err.response?.data;
-      let msg = 'Registration failed. Please check your information and try again.';
-      if (data) {
-        if (typeof data === 'string') msg = data;
-        else if (data.username) msg = `Username: ${data.username[0] || data.username}`;
-        else if (data.email) msg = `Email: ${data.email[0] || data.email}`;
-        else if (data.password) msg = `Password: ${data.password[0] || data.password}`;
-        else if (data.date_of_birth) msg = `Date of Birth: ${data.date_of_birth[0] || data.date_of_birth}`;
-        else if (data.detail) msg = data.detail;
+      console.error('[Registration Catch] Raw error:', err);
+      if (err.response?.data) {
+        console.error('[Django Error Response Body err.response?.data]:', err.response.data);
       }
-      setErrorMessage(msg);
+      const specificError = extractDjangoErrorMessage(err);
+      setErrorMessage(specificError);
     } finally {
       setLoading(false);
     }

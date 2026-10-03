@@ -1,6 +1,15 @@
-import apiClient, { setTokens, clearTokens, getAccessToken, getRefreshToken, API_BASE_URL } from './client';
+import apiClient, { 
+  setTokens, 
+  clearTokens, 
+  getAccessToken, 
+  getRefreshToken, 
+  API_BASE_URL,
+  extractDjangoErrorMessage
+} from './client';
 import { TokenResponse, UserSummary, RegisterPayload } from './types';
 import axios from 'axios';
+
+export { extractDjangoErrorMessage };
 
 /**
  * Login via Django SimpleJWT (/api/token/)
@@ -72,6 +81,7 @@ export const register = async (
   rememberMe = true
 ): Promise<{ access: string; refresh: string; user?: UserSummary }> => {
   try {
+    console.log('[Auth API] Submitting registration payload to Django /api/auth/register/:', payload);
     const response = await apiClient.post<{
       user: UserSummary;
       access: string;
@@ -79,6 +89,7 @@ export const register = async (
       detail?: string;
     }>('auth/register/', payload);
 
+    console.log('[Auth API] Registration succeeded! Response from Django:', response.data);
     const { access, refresh, user } = response.data;
     setTokens(access, refresh, rememberMe);
 
@@ -89,7 +100,7 @@ export const register = async (
 
     return { access, refresh, user };
   } catch (err: any) {
-    console.error('Registration error:', err);
+    console.error('[Auth API] Registration failed. Django response data:', err.response?.data);
     throw err;
   }
 };

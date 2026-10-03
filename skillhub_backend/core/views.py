@@ -270,6 +270,9 @@ from .throttles import LoginRateThrottle
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def set_auth_cookie(response, refresh_token):
@@ -366,14 +369,23 @@ class RegisterView(generics.CreateAPIView):
     User Registration Endpoint (/api/auth/register/)
     Validates username & email uniqueness, complex password requirements,
     and returns initial JWT credentials with HttpOnly cookie.
+    Logs incoming payload keys and any validation errors to terminal.
     """
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        email = request.data.get('email')
+        logger.info(f"[RegisterView] Registration request received for user='{username}', email='{email}'")
+        
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning(f"[RegisterView] Validation failed for user='{username}': {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         user = serializer.save()
+        logger.info(f"[RegisterView] Successfully created user='{user.username}' (ID={user.id}, Role={user.role})")
 
         # Issue JWT tokens for seamless on-boarding
         refresh = RefreshToken.for_user(user)

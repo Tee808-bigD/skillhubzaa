@@ -630,18 +630,36 @@ Respond with pure JSON object:
 
   // User Registration Endpoint
   const handleRegister = (req: any, res: any) => {
-    const { username, email, full_name, role = "youth", password, confirm_password } = req.body || {};
+    const { 
+      username, 
+      email, 
+      full_name, 
+      first_name: reqFirstName,
+      last_name: reqLastName,
+      role = "youth", 
+      password, 
+      confirm_password,
+      password2: reqPassword2,
+      date_of_birth
+    } = req.body || {};
+
+    const confirmationPassword = confirm_password || reqPassword2;
+
     if (!username || !email || !password) {
       return res.status(400).json({ detail: "Please provide username, email, and password." });
     }
-    if (password && confirm_password && password !== confirm_password) {
+    if (password && confirmationPassword && password !== confirmationPassword) {
       return res.status(400).json({ confirm_password: ["Passwords do not match."] });
     }
 
     const userId = `usr_${username.toLowerCase().replace(/\s+/g, '_')}`;
-    const nameParts = (full_name || username).trim().split(' ');
-    const firstName = nameParts[0] || username;
-    const lastName = nameParts.slice(1).join(' ') || '';
+    let firstName = reqFirstName;
+    let lastName = reqLastName;
+    if (!firstName && !lastName) {
+      const nameParts = (full_name || username).trim().split(' ');
+      firstName = nameParts[0] || username;
+      lastName = nameParts.slice(1).join(' ') || '';
+    }
 
     const registeredUser = {
       id: userId,
@@ -649,7 +667,8 @@ Respond with pure JSON object:
       email: email.trim(),
       first_name: firstName,
       last_name: lastName,
-      full_name: full_name?.trim() || username.trim(),
+      full_name: full_name?.trim() || `${firstName} ${lastName}`.trim() || username.trim(),
+      date_of_birth: date_of_birth || null,
       bio: role === 'mentor' 
         ? "Experienced mentor dedicated to empowering South African youth." 
         : role === 'employer' 
