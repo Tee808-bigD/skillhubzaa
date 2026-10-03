@@ -46,9 +46,12 @@ if not DEBUG and 'django-insecure' in SECRET_KEY:
     import warnings
     warnings.warn("DJANGO_SECRET_KEY is using an insecure default in production! Set a custom key via DJANGO_SECRET_KEY.")
 
-# Allowed Hosts (Configurable via comma-separated DJANGO_ALLOWED_HOSTS or ALLOWED_HOSTS)
-raw_hosts = env('DJANGO_ALLOWED_HOSTS', default=env('ALLOWED_HOSTS', default='*' if DEBUG else '127.0.0.1,localhost'))
+# Allowed Hosts (Configurable via environment or defaults for Ngrok & Localhost)
+raw_hosts = env('DJANGO_ALLOWED_HOSTS', default=env('ALLOWED_HOSTS', default='*'))
 ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(',') if h.strip()]
+for default_host in ['engrainedly-subinvolute-silvana.ngrok-free.dev', '.ngrok-free.dev', '.ngrok.io', '127.0.0.1', 'localhost', '*']:
+    if default_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(default_host)
 
 # Application definition
 INSTALLED_APPS = [
@@ -208,6 +211,8 @@ SIMPLE_JWT = {
     'AUTH_COOKIE_PATH': env('JWT_AUTH_COOKIE_PATH', default='/api/token/'),
 }
 
+from corsheaders.defaults import default_headers
+
 # CORS & CSRF Configuration
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # Allows seamless local frontend development
 CORS_ALLOWED_ORIGINS = [
@@ -217,6 +222,12 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.run\.app$",
+    r"^https:\/\/.*\.google\.com$",
+    r"^https:\/\/.*\.ngrok-free\.dev$",
 ]
 
 extra_cors = env('CORS_ALLOWED_ORIGINS', default='')
@@ -229,6 +240,9 @@ if extra_cors:
 CSRF_TRUSTED_ORIGINS = [
     'https://aistudio.google.com',
     'https://engrainedly-subinvolute-silvana.ngrok-free.dev',
+    'https://*.run.app',
+    'https://*.google.com',
+    'https://*.ngrok-free.dev',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
@@ -252,16 +266,9 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'ngrok-skip-browser-warning',  # Essential for Ngrok free-tier warning bypass
     'x-csrftoken',
-    'x-requested-with',
 ]
 
 # Security Headers & Cookie Policies

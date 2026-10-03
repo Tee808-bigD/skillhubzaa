@@ -23,10 +23,12 @@ export const getCsrfToken = (): string | null => {
 };
 
 // Primary Axios Client with withCredentials enabled for HttpOnly cookies & CSRF
+// Includes ngrok-skip-browser-warning header to bypass Ngrok free-tier warning page
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true', // Bypasses Ngrok free-tier browser warning interstitial
   },
   timeout: 10000,
   withCredentials: true, // Enables sending and receiving HttpOnly cookies across origins
@@ -116,6 +118,11 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Always bypass Ngrok free tier browser warning interstitial
+    if (config.headers) {
+      config.headers['ngrok-skip-browser-warning'] = 'true';
+    }
+
     // Attach CSRF token header if present in cookies for non-safe HTTP methods
     const method = config.method?.toLowerCase() || 'get';
     if (!['get', 'head', 'options'].includes(method)) {
@@ -188,21 +195,25 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Comprehensive logging for debugging Django REST Framework interactions
+    // Comprehensive logging for debugging Django REST Framework & Ngrok interactions
     if (error.response) {
       console.error(
         `[DRF API Error] Status: ${error.response.status} (${error.response.statusText}) | Endpoint: ${error.config?.baseURL || ''}${error.config?.url}`,
         '\nPayload sent:', error.config?.data,
-        '\nResponse received from Django:', error.response.data
+        '\nResponse received from Django:', error.response.data,
+        '\nError Details (error.toJSON):', error.toJSON ? error.toJSON() : 'N/A'
       );
     } else if (error.request) {
       console.error(
         `[DRF Network Error] No response received from server at: ${error.config?.baseURL || ''}${error.config?.url}`,
-        '\nIs Ngrok active and forwarding to Django port 8000?',
-        error.message
+        '\nError Message:', error.message,
+        '\nError Code:', error.code,
+        '\nError toJSON:', error.toJSON ? error.toJSON() : error,
+        '\nCheck if Ngrok tunnel is running: ngrok http 8000 --url https://engrainedly-subinvolute-silvana.ngrok-free.dev',
+        '\nCheck if Django CORS settings allow origin and ngrok-skip-browser-warning header.'
       );
     } else {
-      console.error('[DRF Request Setup Error]:', error.message);
+      console.error('[DRF Request Setup Error]:', error.message, error.toJSON ? error.toJSON() : error);
     }
 
     return Promise.reject(error);
