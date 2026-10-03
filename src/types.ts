@@ -24,6 +24,7 @@ export interface User {
   id: string;
   name: string;
   handle: string;
+  email?: string;
   avatar: string;
   bio?: string;
   location: string;

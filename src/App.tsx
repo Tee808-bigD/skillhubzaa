@@ -319,20 +319,31 @@ function AppContent() {
     setIsLoginModalOpen(false);
     setIsSignUpModalOpen(false);
     if (userSummary) {
-      setUser(prev => ({
-        ...prev,
-        id: userSummary.id || prev.id,
-        name: userSummary.full_name || userSummary.username,
-        handle: userSummary.username ? `@${userSummary.username}` : prev.handle,
-        avatar: userSummary.avatar || prev.avatar,
-        bio: userSummary.bio || prev.bio,
-        location: userSummary.location || prev.location,
-        province: (userSummary.province as any) || prev.province,
-        skills: userSummary.skills || prev.skills,
-        role: (userSummary.role as any) || prev.role,
+      const updatedUser: User = {
+        id: userSummary.id || `usr_${userSummary.username?.toLowerCase() || Date.now()}`,
+        name: userSummary.full_name || userSummary.username || 'SkillHub Member',
+        handle: userSummary.username ? `@${userSummary.username}` : '@member',
+        avatar: userSummary.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+        bio: userSummary.bio || (userSummary.role === 'mentor' ? 'Certified Mentor & Career Advisor on SkillHub ZA.' : userSummary.role === 'employer' ? 'Accredited Employer & Youth Placement Partner.' : 'Active South African youth developing trade and digital skills.'),
+        location: userSummary.location || 'South Africa',
+        province: (userSummary.province as any) || 'Gauteng',
         verified: true,
         setaVerified: userSummary.seta_verified ?? true,
-      }));
+        role: (userSummary.role as any) || 'youth',
+        skills: userSummary.skills && userSummary.skills.length > 0 ? userSummary.skills : (userSummary.role === 'mentor' ? ['Leadership', 'Mentorship', 'Career Guidance'] : ['Trades & Skills', 'Youth Development']),
+        educationLevel: 'Matric / Diploma',
+        enrolledCourseIds: [],
+        savedLearnershipIds: [],
+        savedServiceIds: [],
+        savedResourceIds: [],
+        certificatesCount: userSummary.role === 'mentor' ? 4 : 2,
+        badge: userSummary.badge || (userSummary.role === 'mentor' ? 'Verified Mentor' : userSummary.role === 'employer' ? 'Accredited Employer' : 'Verified Youth Member')
+      };
+      setUser(updatedUser);
+      localStorage.setItem('skillhub_user', JSON.stringify(updatedUser));
+      setViewedProfileUser(null);
+      // Auto-navigate to Profile view so user can view all their information immediately
+      setCurrentView('profile');
     }
   };
 

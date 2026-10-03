@@ -200,7 +200,24 @@ class UserSummarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'full_name', 'avatar', 'location', 'is_creator']
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'full_name',
+            'avatar',
+            'location',
+            'province',
+            'bio',
+            'role',
+            'skills',
+            'is_creator',
+            'seta_verified',
+            'verified',
+            'badge',
+        ]
 
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username

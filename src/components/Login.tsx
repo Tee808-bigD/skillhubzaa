@@ -64,11 +64,11 @@ export const Login: React.FC<LoginProps> = ({
     setSuccessMessage(null);
 
     try {
-      await login(username, password, rememberMe);
+      const loggedUser = await login(username, password, rememberMe);
       setSuccessMessage('Welcome back to SkillHub ZA!');
       setTimeout(() => {
-        if (onSuccess) onSuccess();
-      }, 700);
+        if (onSuccess) onSuccess(loggedUser);
+      }, 500);
     } catch (err: any) {
       console.error('Login error:', err);
       const msg =

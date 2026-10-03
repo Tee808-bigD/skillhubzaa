@@ -50,6 +50,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [avatarToast, setAvatarToast] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Sync state whenever targetUser changes (e.g. after registration or profile switch)
+  React.useEffect(() => {
+    setName(targetUser.name);
+    setBio(targetUser.bio || '');
+    setSkills(targetUser.skills ? targetUser.skills.join(', ') : '');
+  }, [targetUser.id, targetUser.name, targetUser.bio, targetUser.skills]);
+
   // POPIA Data Subject Rights State
   const [isExportingData, setIsExportingData] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -307,17 +314,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </form>
           ) : (
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-extrabold text-slate-900">{targetUser.name}</h1>
-                {targetUser.setaVerified && (
-                  <span className="bg-emerald-50 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    Verified SETA Youth
-                  </span>
-                )}
+                <span className="bg-emerald-50 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  {targetUser.badge || (targetUser.role === 'mentor' ? 'Certified Mentor' : targetUser.role === 'employer' ? 'Accredited Employer' : 'Verified SETA Youth')}
+                </span>
+                <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-lg uppercase">
+                  {targetUser.role}
+                </span>
               </div>
 
-              <p className="text-xs text-slate-500 font-semibold mt-0.5">{targetUser.handle} • {targetUser.location}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 font-semibold mt-1">
+                <span>{targetUser.handle}</span>
+                <span>•</span>
+                <span>{targetUser.location}</span>
+                {targetUser.email && (
+                  <>
+                    <span>•</span>
+                    <span className="text-emerald-600 font-mono text-[11px]">{targetUser.email}</span>
+                  </>
+                )}
+              </div>
               <p className="text-xs text-slate-700 mt-2 leading-relaxed max-w-2xl font-medium">{targetUser.bio}</p>
 
               {/* Skills Badges */}

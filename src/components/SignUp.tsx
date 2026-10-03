@@ -120,7 +120,7 @@ export const SignUp: React.FC<SignUpProps> = ({
     setSuccessMessage(null);
 
     try {
-      await register({
+      const createdUser = await register({
         username: username.trim(),
         email: email.trim(),
         password,
@@ -129,10 +129,10 @@ export const SignUp: React.FC<SignUpProps> = ({
         role,
       });
 
-      setSuccessMessage('Account created successfully! Welcome to SkillHub ZA.');
+      setSuccessMessage(`Account created! Welcome, ${createdUser.full_name || createdUser.username}. Logging you in...`);
       setTimeout(() => {
-        if (onSuccess) onSuccess();
-      }, 700);
+        if (onSuccess) onSuccess(createdUser);
+      }, 500);
     } catch (err: any) {
       console.error('Registration error:', err);
       const data = err.response?.data;

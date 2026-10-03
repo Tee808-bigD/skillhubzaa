@@ -14,8 +14,8 @@ interface AuthContextType {
   user: UserSummary | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register: (payload: RegisterPayload, rememberMe?: boolean) => Promise<void>;
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<UserSummary | undefined>;
+  register: (payload: RegisterPayload, rememberMe?: boolean) => Promise<UserSummary>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<string | null>;
   idleTimeoutOccurred: boolean;
@@ -110,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.user);
       }
       setIdleTimeoutOccurred(false);
+      return data.user;
     } finally {
       setIsLoading(false);
     }
@@ -119,10 +120,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const data = await apiRegister(payload, rememberMe);
-      if (data.user) {
-        setUser(data.user);
-      }
+      const userObj: UserSummary = data.user || {
+        id: `usr_${payload.username.toLowerCase().replace(/\s+/g, '_')}`,
+        username: payload.username.trim(),
+        email: payload.email.trim(),
+        full_name: payload.full_name?.trim() || payload.username.trim(),
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+        location: 'Johannesburg, South Africa',
+        province: 'Gauteng',
+        skills: payload.role === 'mentor' ? ['Youth Mentorship', 'Career Strategy'] : ['Trades & Technology', 'Digital Skills'],
+        is_creator: true,
+        role: payload.role || 'youth',
+        verified: true,
+        seta_verified: true,
+        badge: payload.role === 'mentor' ? 'Verified Mentor' : 'Verified Youth Member',
+      };
+      setUser(userObj);
       setIdleTimeoutOccurred(false);
+      return userObj;
     } finally {
       setIsLoading(false);
     }

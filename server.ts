@@ -628,6 +628,95 @@ Respond with pure JSON object:
   app.post("/api/token/", handleTokenObtain);
   app.post("/api/token", handleTokenObtain);
 
+  // User Registration Endpoint
+  const handleRegister = (req: any, res: any) => {
+    const { username, email, full_name, role = "youth", password, confirm_password } = req.body || {};
+    if (!username || !email || !password) {
+      return res.status(400).json({ detail: "Please provide username, email, and password." });
+    }
+    if (password && confirm_password && password !== confirm_password) {
+      return res.status(400).json({ confirm_password: ["Passwords do not match."] });
+    }
+
+    const userId = `usr_${username.toLowerCase().replace(/\s+/g, '_')}`;
+    const nameParts = (full_name || username).trim().split(' ');
+    const firstName = nameParts[0] || username;
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    const registeredUser = {
+      id: userId,
+      username: username.trim(),
+      email: email.trim(),
+      first_name: firstName,
+      last_name: lastName,
+      full_name: full_name?.trim() || username.trim(),
+      bio: role === 'mentor' 
+        ? "Experienced mentor dedicated to empowering South African youth." 
+        : role === 'employer' 
+        ? "SETA accredited employer & youth skills placement partner."
+        : "Active youth member building trade & digital skills in South Africa.",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+      location: "Johannesburg, South Africa",
+      province: "Gauteng",
+      skills: role === 'mentor' ? ["Youth Mentorship", "Career Strategy"] : ["Digital Skills", "Trades & Technology"],
+      is_creator: true,
+      role: role,
+      seta_verified: true,
+      verified: true,
+      badge: role === 'mentor' ? "Verified Mentor" : role === 'employer' ? "Accredited Employer" : "Verified Youth Member"
+    };
+
+    res.status(201).json({
+      access: generateMockJwt(userId, 'access'),
+      refresh: generateMockJwt(userId, 'refresh'),
+      user: registeredUser,
+      detail: "Account registered successfully."
+    });
+  };
+
+  app.post("/api/auth/register", handleRegister);
+  app.post("/api/auth/register/", handleRegister);
+
+  // Logout Endpoints
+  const handleLogoutEndpoint = (req: any, res: any) => {
+    res.json({ detail: "Successfully logged out and token blacklisted." });
+  };
+  app.post("/api/token/logout", handleLogoutEndpoint);
+  app.post("/api/token/logout/", handleLogoutEndpoint);
+  app.post("/api/auth/logout", handleLogoutEndpoint);
+  app.post("/api/auth/logout/", handleLogoutEndpoint);
+
+  // POPIA Endpoints
+  app.get("/api/users/data-export", (req: any, res: any) => {
+    res.json({
+      popia_statement: "Official Data Dossier under POPIA Section 23",
+      exported_at: new Date().toISOString(),
+      user: {
+        id: "usr_active",
+        username: "current_user",
+        full_name: "Active SkillHub Member"
+      }
+    });
+  });
+  app.get("/api/users/data-export/", (req: any, res: any) => {
+    res.json({
+      popia_statement: "Official Data Dossier under POPIA Section 23",
+      exported_at: new Date().toISOString(),
+      user: {
+        id: "usr_active",
+        username: "current_user",
+        full_name: "Active SkillHub Member"
+      }
+    });
+  });
+
+  app.post("/api/users/delete-account", (req: any, res: any) => {
+    res.json({ detail: "Account and personal data successfully deleted under POPIA Section 24." });
+  });
+  app.post("/api/users/delete-account/", (req: any, res: any) => {
+    res.json({ detail: "Account and personal data successfully deleted under POPIA Section 24." });
+  });
+
   const handleTokenRefresh = (req: any, res: any) => {
     const { refresh } = req.body || {};
     if (!refresh) {
