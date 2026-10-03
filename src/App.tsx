@@ -62,8 +62,10 @@ import { Login } from './components/Login';
 import { SignUp } from './components/SignUp';
 import { DMCAForm } from './components/DMCAForm';
 import { CookieConsent } from './components/CookieConsent';
+import { LegalModal } from './components/LegalModal';
 import { AuthProvider } from './contexts/AuthContext';
 import { isUserLoggedIn, clearTokens } from './api/client';
+import { logout as apiLogout } from './api/auth';
 import { UserSummary } from './api/types';
 
 import { 
@@ -301,9 +303,13 @@ function AppContent() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState<boolean>(false);
   const [isDMCAOpen, setIsDMCAOpen] = useState<boolean>(false);
+  const [activeLegalModal, setActiveLegalModal] = useState<'terms' | 'privacy' | 'community-guidelines' | null>(null);
 
   useEffect(() => {
-    const handleAuthLogout = () => setIsAuthenticated(false);
+    const handleAuthLogout = () => {
+      setIsAuthenticated(false);
+      setUser(defaultUser);
+    };
     window.addEventListener('auth:logout', handleAuthLogout);
     return () => window.removeEventListener('auth:logout', handleAuthLogout);
   }, []);
@@ -311,6 +317,7 @@ function AppContent() {
   const handleLoginSuccess = (userSummary?: UserSummary) => {
     setIsAuthenticated(true);
     setIsLoginModalOpen(false);
+    setIsSignUpModalOpen(false);
     if (userSummary) {
       setUser(prev => ({
         ...prev,
@@ -329,9 +336,15 @@ function AppContent() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiLogout();
+    } catch (err) {
+      console.warn('API logout notice:', err);
+    }
     clearTokens();
     setIsAuthenticated(false);
+    setUser(defaultUser);
   };
 
   // Auto-filtering of concluded events
@@ -805,10 +818,11 @@ function AppContent() {
         isAuthenticated={isAuthenticated}
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onLogout={handleLogout}
+        onOpenLegalDoc={(type) => setActiveLegalModal(type)}
       />
 
-      {/* Main View Area offset by sidebar */}
-      <div className={`flex-1 ml-16 lg:ml-64 min-h-screen ${currentView === 'messages' ? 'pb-2' : 'pb-16'}`}>
+      {/* Main View Area offset by slim sidebar rail */}
+      <div className={`flex-1 ml-[72px] min-h-screen ${currentView === 'messages' ? 'pb-2' : 'pb-16'}`}>
         
         {/* Main Content View Switch */}
         <main className={`max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 ${currentView === 'messages' ? 'pt-1.5 sm:pt-2' : 'pt-3 sm:pt-4'}`}>
@@ -1162,6 +1176,15 @@ function AppContent() {
             <DMCAForm onBack={() => setIsDMCAOpen(false)} />
           </div>
         </div>
+      )}
+
+      {/* Legal Documents Modal (Terms, Privacy, Guidelines) */}
+      {activeLegalModal && (
+        <LegalModal
+          type={activeLegalModal}
+          isOpen={true}
+          onClose={() => setActiveLegalModal(null)}
+        />
       )}
 
       <CookieConsent />
