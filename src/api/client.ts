@@ -1,60 +1,102 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// Base URL: Points to Django backend (http://127.0.0.1:8000/api/) by default,
-// or falls back to relative /api/ for Vite proxy and preview runtime.
+// Base URL: Points to Django backend or falls back to relative /api/
 const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
-    // If explicitly defined in environment
     if (import.meta.env.VITE_API_BASE_URL) {
       return import.meta.env.VITE_API_BASE_URL;
     }
-    // If backend URL is stored in localStorage toggle
     const customUrl = localStorage.getItem('skillhub_custom_api_url');
     if (customUrl) return customUrl;
   }
-  // Default to relative /api/ in browser preview so it works out-of-the-box,
-  // or http://127.0.0.1:8000/api/ for direct Django development.
   return '/api/';
 };
 
 export const API_BASE_URL = getBaseUrl();
 export const DJANGO_LOCAL_URL = 'http://127.0.0.1:8000/api/';
 
+// Helper to read CSRF token cookie from browser
+export const getCsrfToken = (): string | null => {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+// Primary Axios Client with withCredentials enabled for HttpOnly cookies & CSRF
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+  withCredentials: true, // Enables sending and receiving HttpOnly cookies across origins
 });
 
-// Token Storage Keys
+// In-Memory Token Storage (Shielded from XSS localStorage attacks)
+let inMemoryAccessToken: string | null = null;
+
+export const setInMemoryToken = (token: string | null): void => {
+  inMemoryAccessToken = token;
+};
+
+export const getInMemoryToken = (): string | null => {
+  return inMemoryAccessToken;
+};
+
+// Storage Keys
 export const ACCESS_TOKEN_KEY = 'access_token';
 export const REFRESH_TOKEN_KEY = 'refresh_token';
 export const USER_DATA_KEY = 'skillhub_user';
+export const REMEMBER_ME_KEY = 'skillhub_remember_me';
 
+/**
+ * Retrieves the active access token, prioritizing in-memory storage,
+ * followed by session-scoped sessionStorage, and persistent localStorage.
+ */
 export const getAccessToken = (): string | null => {
+  if (inMemoryAccessToken) return inMemoryAccessToken;
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return sessionStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(ACCESS_TOKEN_KEY);
 };
 
 export const getRefreshToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return sessionStorage.getItem(REFRESH_TOKEN_KEY) || localStorage.getItem(REFRESH_TOKEN_KEY);
 };
 
-export const setTokens = (access: string, refresh?: string): void => {
+/**
+ * Sets access and refresh tokens according to "Remember Me" preference.
+ * If rememberMe is false, tokens are stored in memory and sessionStorage only (destroyed on tab close).
+ */
+export const setTokens = (access: string, refresh?: string, rememberMe = true): void => {
+  inMemoryAccessToken = access;
   if (typeof window === 'undefined') return;
-  localStorage.setItem(ACCESS_TOKEN_KEY, access);
-  if (refresh) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+
+  if (rememberMe) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, access);
+    localStorage.setItem(REMEMBER_ME_KEY, 'true');
+    if (refresh) localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  } else {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, access);
+    localStorage.removeItem(REMEMBER_ME_KEY);
+    if (refresh) sessionStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
   }
 };
 
 export const clearTokens = (): void => {
+  inMemoryAccessToken = null;
   if (typeof window === 'undefined') return;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(USER_DATA_KEY);
+  localStorage.removeItem(REMEMBER_ME_KEY);
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  sessionStorage.removeItem(USER_DATA_KEY);
 };
 
 export const isUserLoggedIn = (): boolean => {
@@ -62,9 +104,10 @@ export const isUserLoggedIn = (): boolean => {
 };
 
 /**
- * Request Interceptor: Attach JWT Bearer Token to Authorization Header
- * For FormData payloads, remove default Content-Type so the browser automatically generates
- * 'multipart/form-data; boundary=----WebKitFormBoundary...' (prevents DRF 400 Bad Request).
+ * Request Interceptor:
+ * 1. Attaches JWT Bearer Token.
+ * 2. Attaches X-CSRFToken header for non-GET requests.
+ * 3. Removes manual Content-Type for FormData (multipart boundary preservation).
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -72,10 +115,21 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Remove manual Content-Type if payload is FormData so browser sets correct boundary
+
+    // Attach CSRF token header if present in cookies for non-safe HTTP methods
+    const method = config.method?.toLowerCase() || 'get';
+    if (!['get', 'head', 'options'].includes(method)) {
+      const csrf = getCsrfToken();
+      if (csrf && config.headers) {
+        config.headers['X-CSRFToken'] = csrf;
+      }
+    }
+
+    // Remove manual Content-Type if payload is FormData
     if (config.data instanceof FormData && config.headers) {
       delete config.headers['Content-Type'];
     }
+
     return config;
   },
   (error: AxiosError) => {
@@ -84,40 +138,52 @@ apiClient.interceptors.request.use(
 );
 
 /**
- * Response Interceptor: Automatically attempt Refresh Token on 401 Unauthorized
+ * Response Interceptor:
+ * Silently refreshes expired access token via HttpOnly cookie or stored refresh token on 401.
  */
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // If 401 and we haven't already retried
+    // Don't retry auth endpoints themselves
+    if (
+      originalRequest?.url?.includes('token/') || 
+      originalRequest?.url?.includes('auth/register/') || 
+      originalRequest?.url?.includes('auth/logout/')
+    ) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
       const refreshToken = getRefreshToken();
 
-      if (refreshToken) {
-        try {
-          // Attempt to refresh the access token
-          const res = await axios.post<{ access: string }>(
-            `${API_BASE_URL}token/refresh/`,
-            { refresh: refreshToken },
-            { headers: { 'Content-Type': 'application/json' } }
-          );
+      try {
+        // Post to token refresh endpoint with credentials (supporting both HttpOnly cookie and body)
+        const payload = refreshToken ? { refresh: refreshToken } : {};
+        const res = await axios.post<{ access: string; refresh?: string }>(
+          `${API_BASE_URL}token/refresh/`,
+          payload,
+          {
+            headers: { 'Content-Type': 'application/json' },
+            withCredentials: true,
+          }
+        );
 
-          if (res.data.access) {
-            setTokens(res.data.access);
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
-            }
-            return apiClient(originalRequest);
+        if (res.data?.access) {
+          const isRemembered = localStorage.getItem(REMEMBER_ME_KEY) === 'true';
+          setTokens(res.data.access, res.data.refresh, isRemembered);
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
           }
-        } catch (refreshErr) {
-          // Refresh token expired or invalid: clear session
-          clearTokens();
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-          }
+          return apiClient(originalRequest);
+        }
+      } catch (refreshErr) {
+        // Refresh token expired or blacklisted: clear session
+        clearTokens();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:logout'));
         }
       }
     }

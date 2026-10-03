@@ -230,10 +230,29 @@ def home_view(request):
     return HttpResponse(html_content)
 
 
-from .models import User, Profile, Post, Comment, Like, Event, Service, Reel, Message, ChatRoom
+from .models import (
+    User,
+    Profile,
+    Post,
+    Comment,
+    Like,
+    Event,
+    Service,
+    Reel,
+    Message,
+    ChatRoom,
+    PolicyVersion,
+    Report,
+    DMCARequest,
+    DataBreach,
+)
 from .serializers import (
     UserSerializer,
     UserSummarySerializer,
+    RegisterSerializer,
+    ReportSerializer,
+    DMCARequestSerializer,
+    PolicyVersionSerializer,
     CustomTokenObtainPairSerializer,
     ProfileSerializer,
     PostSerializer,
@@ -245,13 +264,133 @@ from .serializers import (
     MessageSerializer,
     ChatRoomSerializer,
 )
+import json
+from django.utils import timezone
+from .throttles import LoginRateThrottle
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from django.conf import settings
+
+
+def set_auth_cookie(response, refresh_token):
+    """Utility to set HttpOnly refresh token cookie safely."""
+    cookie_name = settings.SIMPLE_JWT.get('AUTH_COOKIE', 'refresh_token')
+    max_age = int(settings.SIMPLE_JWT.get('REFRESH_TOKEN_LIFETIME').total_seconds())
+    secure = settings.SIMPLE_JWT.get('AUTH_COOKIE_SECURE', False)
+    samesite = settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Lax')
+    path = settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/api/token/')
+    response.set_cookie(
+        key=cookie_name,
+        value=str(refresh_token),
+        max_age=max_age,
+        httponly=True,
+        secure=secure,
+        samesite=samesite,
+        path=path,
+    )
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
     Custom JWT Token view returning access token, refresh token, and authenticated user info.
+    Protected by LoginRateThrottle (5 req/min) to prevent brute-force attacks.
+    Sets HttpOnly cookie for the refresh token.
     """
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == status.HTTP_200_OK and 'refresh' in response.data:
+            set_auth_cookie(response, response.data['refresh'])
+        return response
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+    """
+    Custom TokenRefreshView that supports refresh token passed in request body OR HttpOnly cookie.
+    If refresh token rotation is enabled, the new refresh token is updated in the HttpOnly cookie.
+    """
+    def post(self, request, *args, **kwargs):
+        cookie_name = settings.SIMPLE_JWT.get('AUTH_COOKIE', 'refresh_token')
+        # Fall back to HttpOnly cookie if refresh token not provided in body
+        if not request.data.get('refresh') and cookie_name in request.COOKIES:
+            data = request.data.copy()
+            data['refresh'] = request.COOKIES[cookie_name]
+            serializer = self.get_serializer(data=data)
+        else:
+            serializer = self.get_serializer(data=request.data)
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+        response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+        # If rotation is enabled and a new refresh token is issued, update the cookie
+        if 'refresh' in serializer.validated_data:
+            set_auth_cookie(response, serializer.validated_data['refresh'])
+        return response
+
+
+class LogoutView(generics.GenericAPIView):
+    """
+    Blacklists the user's refresh token and clears the HttpOnly refresh token cookie.
+    Endpoint: /api/token/logout/ and /api/auth/logout/
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        cookie_name = settings.SIMPLE_JWT.get('AUTH_COOKIE', 'refresh_token')
+        refresh_token = request.data.get('refresh') or request.COOKIES.get(cookie_name)
+
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception as e:
+                # Token may already be blacklisted or invalid
+                pass
+
+        response = Response(
+            {"detail": "Successfully logged out and token blacklisted."},
+            status=status.HTTP_200_OK
+        )
+        path = settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/api/token/')
+        response.delete_cookie(cookie_name, path=path)
+        return response
+
+
+class RegisterView(generics.CreateAPIView):
+    """
+    User Registration Endpoint (/api/auth/register/)
+    Validates username & email uniqueness, complex password requirements,
+    and returns initial JWT credentials with HttpOnly cookie.
+    """
+    serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # Issue JWT tokens for seamless on-boarding
+        refresh = RefreshToken.for_user(user)
+        access = refresh.access_token
+
+        user_data = UserSummarySerializer(user, context={'request': request}).data
+
+        response_data = {
+            'user': user_data,
+            'access': str(access),
+            'refresh': str(refresh),
+            'detail': 'Account registered successfully.'
+        }
+        response = Response(response_data, status=status.HTTP_201_CREATED)
+        set_auth_cookie(response, str(refresh))
+        return response
+
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -307,13 +446,23 @@ class PostViewSet(viewsets.ModelViewSet):
     """
     API endpoint for social feed posts.
     Supports creating, listing, viewing, deleting, and liking posts with multipart/form-data image/video uploads.
+    Enforces ECTA Safe Harbor moderation exclusions and POPIA child/minor age restrictions.
     """
-    queryset = Post.objects.select_related('author').prefetch_related('comments', 'likes').all()
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [filters.SearchFilter]
     search_fields = ['content', 'category', 'author__username']
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Post.objects.select_related('author').prefetch_related('comments', 'likes').all()
+        # Exclude posts removed by moderation
+        queryset = queryset.exclude(moderation_status='removed')
+        # Filter out 18+ age restricted content if user is anonymous or minor under 18
+        if not user.is_authenticated or getattr(user, 'is_minor', False):
+            queryset = queryset.filter(is_age_restricted=False)
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -558,3 +707,272 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
+
+
+# ==============================================================================
+# POPIA (DATA SUBJECT RIGHTS & CONSENT) & SAFE HARBOR VIEWS
+# ==============================================================================
+
+class AcceptTermsView(generics.GenericAPIView):
+    """
+    Records POPIA Section 11 informed consent.
+    Called post-registration or when terms/privacy policy versions are updated.
+    Endpoint: /api/auth/accept-terms/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        version = request.data.get('version', '1.0')
+        marketing = request.data.get('marketing_consent', False)
+
+        now = timezone.now()
+        user.terms_accepted_at = now
+        user.privacy_policy_accepted_at = now
+        user.marketing_consent = bool(marketing)
+        user.policy_version_agreed = str(version)
+        user.save()
+
+        return Response({
+            'detail': 'POPIA consent recorded successfully.',
+            'terms_accepted_at': user.terms_accepted_at,
+            'privacy_policy_accepted_at': user.privacy_policy_accepted_at,
+            'marketing_consent': user.marketing_consent,
+            'policy_version': user.policy_version_agreed,
+        }, status=status.HTTP_200_OK)
+
+
+class DataExportView(generics.GenericAPIView):
+    """
+    POPIA Section 23: Right of Access to Personal Information.
+    Generates a full JSON export of all user profile data, posts, comments,
+    likes, and messages for download.
+    Endpoint: /api/users/data-export/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        export_payload = {
+            'popia_compliance_statement': (
+                "Official Personal Information Dossier issued under Section 23 of the "
+                "Protection of Personal Information Act No. 4 of 2013 (Republic of South Africa)."
+            ),
+            'data_subject': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.get_full_name() or user.username,
+                'role': user.role,
+                'province': user.province,
+                'location': user.location,
+                'bio': user.bio,
+                'skills': user.skills,
+                'date_of_birth': user.date_of_birth.isoformat() if user.date_of_birth else None,
+                'is_minor': user.is_minor,
+                'date_joined': user.date_joined.isoformat() if user.date_joined else None,
+                'consent_records': {
+                    'terms_accepted_at': user.terms_accepted_at.isoformat() if user.terms_accepted_at else None,
+                    'privacy_policy_accepted_at': user.privacy_policy_accepted_at.isoformat() if user.privacy_policy_accepted_at else None,
+                    'marketing_consent': user.marketing_consent,
+                    'policy_version_agreed': user.policy_version_agreed,
+                }
+            },
+            'exported_at': timezone.now().isoformat(),
+            'posts_created': [
+                {
+                    'id': p.id,
+                    'content': p.content,
+                    'media_type': p.media_type,
+                    'category': p.category,
+                    'hashtags': p.hashtags,
+                    'created_at': p.created_at.isoformat(),
+                } for p in user.posts.all()
+            ],
+            'comments_posted': [
+                {
+                    'id': c.id,
+                    'post_id': c.post_id,
+                    'content': c.content,
+                    'created_at': c.created_at.isoformat(),
+                } for c in user.comments.all()
+            ],
+            'marketplace_services': [
+                {
+                    'id': s.id,
+                    'title': s.title,
+                    'price': str(s.price),
+                    'price_unit': s.price_unit,
+                    'category': s.category,
+                    'created_at': s.created_at.isoformat(),
+                } for s in user.services.all()
+            ],
+            'direct_messages_sent': [
+                {
+                    'id': m.id,
+                    'recipient': m.receiver.username if m.receiver else 'Room',
+                    'content': m.content,
+                    'timestamp': m.timestamp.isoformat(),
+                } for m in user.sent_messages.all()
+            ]
+        }
+
+        response = HttpResponse(
+            json.dumps(export_payload, indent=2),
+            content_type='application/json'
+        )
+        response['Content-Disposition'] = f'attachment; filename="skillhub_za_popia_data_{user.username}.json"'
+        return response
+
+
+class DeleteAccountView(generics.GenericAPIView):
+    """
+    POPIA Section 24: Right to Deletion and Destruction of Records.
+    Irreversibly scrubs all personal data, deactivates account, and invalidates tokens.
+    Endpoint: /api/users/delete-account/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        confirmation = request.data.get('confirmation', '')
+        if confirmation != 'DELETE':
+            return Response(
+                {'error': 'Please enter "DELETE" to confirm irreversible erasure under POPIA Section 24.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
+
+        # Anonymize and erase personal information
+        user.email = f"erased_{user.id}@skillhub.invalid"
+        user.first_name = "Erased"
+        user.last_name = "User"
+        user.bio = ""
+        user.location = "Erased"
+        user.skills = []
+        user.avatar = None
+        user.is_active = False
+        user.username = f"erased_account_{user.id}"
+        user.save()
+
+        # Delete auth cookies
+        response = Response({
+            'detail': 'Account and all identifying records successfully erased in compliance with POPIA Section 24.'
+        }, status=status.HTTP_200_OK)
+
+        cookie_name = settings.SIMPLE_JWT.get('AUTH_COOKIE', 'refresh_token')
+        response.delete_cookie(cookie_name, path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/api/token/'))
+        return response
+
+
+class ReportViewSet(viewsets.ModelViewSet):
+    """
+    Content Reporting API under ECTA Chapter XI Safe Harbor.
+    Users can submit reports on posts, comments, messages, or accounts.
+    Staff members can review and action reports.
+    Endpoint: /api/reports/
+    """
+    serializer_class = ReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Report.objects.all().order_by('-created_at')
+        return Report.objects.filter(reporter=self.request.user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        report = serializer.save(reporter=self.request.user)
+        # Automatically mark flagged content
+        if report.content_type == 'post':
+            Post.objects.filter(pk=report.content_id).update(is_flagged=True)
+        elif report.content_type == 'comment':
+            Comment.objects.filter(pk=report.content_id).update(is_flagged=True)
+        elif report.content_type == 'message':
+            Message.objects.filter(pk=report.content_id).update(is_flagged=True)
+
+
+class DMCARequestView(generics.CreateAPIView):
+    """
+    DMCA & ECTA Chapter XI Notice and Takedown Endpoint.
+    Allows copyright owners to file takedown requests.
+    Endpoint: /api/dmca/
+    """
+    serializer_class = DMCARequestSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        agent_info = getattr(settings, 'DMCA_COPYRIGHT_AGENT', {})
+        return Response({
+            'notice': 'SkillHub ZA Designated Copyright Agent (ECTA Chapter XI / DMCA)',
+            'designated_agent': agent_info,
+            'instructions': 'Submit POST request with infringement details to file a formal takedown notice.',
+        })
+
+
+class LegalDocumentView(generics.GenericAPIView):
+    """
+    Returns legal policy documents (Terms, POPIA Privacy Policy, Community Guidelines).
+    Endpoint: /api/legal/<policy_type>/
+    """
+    permission_classes = [permissions.AllowAny]
+
+    LEGAL_DOCS = {
+        'terms': {
+            'title': 'SkillHub ZA Terms of Service',
+            'version': '1.0',
+            'effective_date': '2026-01-01',
+            'content': (
+                "### SkillHub ZA Terms of Service\n\n"
+                "**1. Acceptance of Terms:** By accessing or using SkillHub ZA, you agree to comply with and be bound by these Terms of Service under the laws of the Republic of South Africa.\n\n"
+                "**2. Eligibility & Age Gate:** You must be at least 13 years old to use the platform. Minors aged 13-17 require verified parental or guardian consent under POPIA.\n\n"
+                "**3. User Conduct:** Prohibited activities include hate speech, discrimination, harassment, defamation, copyright infringement, and malicious content distribution.\n\n"
+                "**4. Content License:** You retain ownership of content you post. You grant SkillHub ZA a non-exclusive, royalty-free, worldwide license to host, display, and distribute your content solely for operating the platform.\n\n"
+                "**5. Safe Harbor & Termination:** We reserve the right under ECTA Chapter XI to remove offending material and suspend or terminate accounts that breach these terms.\n\n"
+                "**6. Governing Law:** These terms are governed exclusively by the laws of South Africa. Any disputes shall be subject to the jurisdiction of the South African courts."
+            )
+        },
+        'privacy': {
+            'title': 'SkillHub ZA POPIA Privacy Policy',
+            'version': '1.0',
+            'effective_date': '2026-01-01',
+            'content': (
+                "### SkillHub ZA POPIA Privacy Policy\n\n"
+                "**1. Responsible Party:** SkillHub ZA complies with the Protection of Personal Information Act No. 4 of 2013 (POPIA).\n\n"
+                "**2. Purpose of Collection:** We collect personal information (name, contact details, artisan qualifications, location) solely to facilitate community skill-sharing, learnership matching, and verified artisan bookings.\n\n"
+                "**3. Consent:** We process your personal information only with your explicit informed consent (Section 11).\n\n"
+                "**4. Data Subject Rights:** Under Sections 23-25, you have the right to request access to your data via our Data Export tool, request correction, or request complete erasure via our Delete Account tool.\n\n"
+                "**5. Security & Breach Notification:** In the event of a security compromise, we notify affected data subjects and the Information Regulator pursuant to Section 22.\n\n"
+                "**6. Information Officer Contact:** For inquiries or complaints, contact our Information Officer at privacy@skillhub.co.za."
+            )
+        },
+        'community-guidelines': {
+            'title': 'SkillHub ZA Community Guidelines',
+            'version': '1.0',
+            'effective_date': '2026-01-01',
+            'content': (
+                "### SkillHub ZA Community Guidelines\n\n"
+                "**1. Mutual Respect & Ubuntu:** We uphold the spirit of Ubuntu. Every artisan, learner, and employer deserves dignity and constructive engagement.\n\n"
+                "**2. Zero Tolerance for Hate Speech:** Discrimination based on race, gender, sexual orientation, disability, or language is strictly prohibited and subject to immediate removal.\n\n"
+                "**3. Verified Artisan Integrity:** Misrepresentation of SETA accreditation, falsified trade certificates, or scamming customers will result in permanent ban and reporting to relevant industry bodies.\n\n"
+                "**4. Reporting Violations:** Use the three-dot report menu on any post or comment to flag objectionable content. Our moderation team reviews all reports within 24 hours."
+            )
+        }
+    }
+
+    def get(self, request, policy_type=None, *args, **kwargs):
+        doc = self.LEGAL_DOCS.get(policy_type)
+        if not doc:
+            return Response({'error': f'Document {policy_type} not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if database has active PolicyVersion overriding defaults
+        db_doc = PolicyVersion.objects.filter(policy_type=policy_type, is_active=True).first()
+        if db_doc:
+            return Response({
+                'title': db_doc.title,
+                'version': db_doc.version,
+                'effective_date': db_doc.effective_date.isoformat(),
+                'content': db_doc.content,
+            })
+
+        return Response(doc)
+

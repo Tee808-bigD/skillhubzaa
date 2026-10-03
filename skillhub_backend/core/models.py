@@ -55,6 +55,17 @@ class User(AbstractUser):
     verified = models.BooleanField(_('Verified Profile'), default=False)
     badge = models.CharField(_('Profile Badge'), max-width=100, blank=True, null=True, default='Active Member')
 
+    # POPIA Compliance (Protection of Personal Information Act) & Consent
+    terms_accepted_at = models.DateTimeField(_('Terms Accepted At'), null=True, blank=True)
+    privacy_policy_accepted_at = models.DateTimeField(_('Privacy Policy Accepted At'), null=True, blank=True)
+    marketing_consent = models.BooleanField(_('Marketing Communications Consent'), default=False)
+    policy_version_agreed = models.CharField(_('Policy Version Agreed'), max-width=20, default='1.0')
+
+    # Age Verification & Minor Protection
+    date_of_birth = models.DateField(_('Date of Birth'), null=True, blank=True)
+    is_minor = models.BooleanField(_('Is Minor Under 18'), default=False)
+    parental_consent_token = models.CharField(_('Parental Consent Token'), max-width=100, blank=True, null=True)
+
     class Meta:
         verbose_name = _('User')
         verbose_name_plural = _('Users')
@@ -97,6 +108,22 @@ class Post(models.Model):
     video_file = models.FileField(_('Video File'), upload_to='posts/videos/', blank=True, null=True)
     category = models.CharField(_('Category'), max-width=100, default='General')
     hashtags = models.CharField(_('Hashtags'), max-width=300, blank=True, default='')
+
+    # Safe Harbor & Content Moderation (ECTA Chapter XI)
+    MODERATION_STATUS_CHOICES = [
+        ('approved', 'Approved'),
+        ('pending', 'Pending Review'),
+        ('removed', 'Removed for Policy Violation'),
+    ]
+    moderation_status = models.CharField(
+        _('Moderation Status'),
+        max-width=20,
+        choices=MODERATION_STATUS_CHOICES,
+        default='approved'
+    )
+    is_flagged = models.BooleanField(_('Is Flagged for Moderation'), default=False)
+    is_age_restricted = models.BooleanField(_('Is Age Restricted (18+)'), default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -142,6 +169,7 @@ class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
     content = models.TextField(_('Comment Text'))
+    is_flagged = models.BooleanField(_('Is Flagged for Moderation'), default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -285,6 +313,7 @@ class Message(models.Model):
     text = models.TextField(_('Message Text (Legacy Alias)'), blank=True, default='')
     media_url = models.URLField(_('Media Attachment URL'), blank=True, null=True)
     is_read = models.BooleanField(_('Is Read'), default=False)
+    is_flagged = models.BooleanField(_('Is Flagged for Moderation'), default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -305,3 +334,138 @@ class Message(models.Model):
     def __str__(self):
         room_tag = f"Room {self.room_id}" if self.room_id else "Direct"
         return f"[{room_tag}] {self.sender.username}: {self.content[:30]}"
+
+
+# ==============================================================================
+# POPIA, SAFE HARBOR (ECTA), AND LEGAL COMPLIANCE MODELS
+# ==============================================================================
+
+class PolicyVersion(models.Model):
+    """
+    Version control for legal agreements under POPIA and ECTA.
+    Tracks exact versions of Terms of Service, Privacy Policy, and Community Guidelines.
+    """
+    POLICY_TYPES = [
+        ('terms', 'Terms of Service'),
+        ('privacy', 'POPIA Privacy Policy'),
+        ('community_guidelines', 'Community Guidelines'),
+    ]
+
+    policy_type = models.CharField(_('Policy Type'), max-width=30, choices=POLICY_TYPES)
+    version = models.CharField(_('Version Number'), max-width=20, default='1.0')
+    title = models.CharField(_('Title'), max-width=200)
+    content = models.TextField(_('Legal Document Content (Markdown/HTML)'))
+    effective_date = models.DateField(_('Effective Date'))
+    is_active = models.BooleanField(_('Is Current Active Version'), default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-effective_date', '-created_at']
+        unique_together = ('policy_type', 'version')
+        verbose_name = _('Policy Version')
+        verbose_name_plural = _('Policy Versions')
+
+    def __str__(self):
+        return f"{self.get_policy_type_display()} v{self.version} ({'Active' if self.is_active else 'Archived'})"
+
+
+class DataBreach(models.Model):
+    """
+    POPIA Section 22 Data Breach Notification Log.
+    Mandatory record of any security compromises for Information Regulator reporting.
+    """
+    incident_date = models.DateTimeField(_('Incident Date & Time'))
+    description = models.TextField(_('Description of Security Compromise'))
+    affected_users_count = models.IntegerField(_('Estimated Affected Users Count'), default=0)
+    affected_users = models.ManyToManyField(User, related_name='data_breaches', blank=True)
+    remediation_steps = models.TextField(_('Remediation & Mitigation Steps Taken'))
+    regulator_notified = models.BooleanField(_('Information Regulator Notified'), default=False)
+    regulator_notified_at = models.DateTimeField(_('Regulator Notification Timestamp'), null=True, blank=True)
+    reported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-reported_at']
+        verbose_name = _('Data Breach Record')
+        verbose_name_plural = _('Data Breach Records')
+
+    def __str__(self):
+        return f"Breach Log #{self.pk} - {self.incident_date.strftime('%Y-%m-%d')} ({self.affected_users_count} affected)"
+
+
+class Report(models.Model):
+    """
+    User Content Moderation & Reporting System under ECTA Chapter XI Safe Harbor.
+    """
+    CONTENT_TYPES = [
+        ('post', 'Post'),
+        ('comment', 'Comment'),
+        ('message', 'Message'),
+        ('user', 'User Profile'),
+    ]
+
+    REASON_CHOICES = [
+        ('hate_speech', 'Hate Speech & Discrimination'),
+        ('harassment', 'Harassment or Bullying'),
+        ('spam', 'Spam, Fraud or Scam'),
+        ('misinformation', 'Misinformation & Harmful Lies'),
+        ('copyright', 'Copyright Infringement'),
+        ('other', 'Other Policy Violation'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('reviewed', 'Reviewed'),
+        ('action_taken', 'Content Removed / Action Taken'),
+        ('dismissed', 'Dismissed / No Violation'),
+    ]
+
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submitted_reports')
+    content_type = models.CharField(_('Content Type'), max-width=20, choices=CONTENT_TYPES)
+    content_id = models.CharField(_('Reported Content ID'), max-width=100)
+    reason = models.CharField(_('Reason for Report'), max-width=30, choices=REASON_CHOICES)
+    comment = models.TextField(_('Additional Context / Reporter Notes'), blank=True, default='')
+    status = models.CharField(_('Moderation Status'), max-width=20, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(_('Internal Moderator Notes'), blank=True, default='')
+    action_taken_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='actioned_reports')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _('Content Report')
+        verbose_name_plural = _('Content Reports')
+
+    def __str__(self):
+        return f"Report #{self.pk} on {self.content_type} #{self.content_id} ({self.get_reason_display()})"
+
+
+class DMCARequest(models.Model):
+    """
+    ECTA / DMCA Safe Harbor Notice and Takedown Request.
+    """
+    STATUS_CHOICES = [
+        ('received', 'Notice Received'),
+        ('action_taken', 'Content Removed / Access Disabled'),
+        ('rejected', 'Notice Rejected / Insufficient Proof'),
+    ]
+
+    complainant_name = models.CharField(_('Full Legal Name of Copyright Owner or Agent'), max-width=200)
+    complainant_email = models.EmailField(_('Complainant Contact Email'))
+    copyrighted_work = models.TextField(_('Identification of Copyrighted Work Claimed to be Infringed'))
+    infringing_url = models.URLField(_('URL or Specific Location of Infringing Material'))
+    good_faith_statement = models.BooleanField(_('Good Faith Belief Statement'), default=True)
+    accuracy_statement = models.BooleanField(_('Penalty of Perjury / Truthfulness Statement'), default=True)
+    electronic_signature = models.CharField(_('Electronic Signature'), max-width=150)
+    status = models.CharField(_('Takedown Status'), max-width=20, choices=STATUS_CHOICES, default='received')
+    admin_notes = models.TextField(_('Moderator Actions & Notes'), blank=True, default='')
+    received_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-received_at']
+        verbose_name = _('DMCA / ECTA Takedown Request')
+        verbose_name_plural = _('DMCA / ECTA Takedown Requests')
+
+    def __str__(self):
+        return f"DMCA Notice #{self.pk} from {self.complainant_name} ({self.status})"
+

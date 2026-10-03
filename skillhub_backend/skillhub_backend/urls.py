@@ -6,16 +6,19 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import TokenRefreshView
-from core.views import CustomTokenObtainPairView, home_view
+from core.views import CustomTokenObtainPairView, CustomTokenRefreshView, LogoutView, RegisterView, home_view
 
 urlpatterns = [
     # Root Landing Page: Links to Full Web App, Admin, and API Endpoints
     path('', home_view, name='home'),
     path('admin/', admin.site.urls),
-    # JWT Authentication Endpoints (CustomTokenObtainPairView includes user summary)
+    # JWT Authentication Endpoints
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/logout/', LogoutView.as_view(), name='token_logout'),
+    # Auth Endpoints
+    path('api/auth/register/', RegisterView.as_view(), name='auth_register'),
+    path('api/auth/logout/', LogoutView.as_view(), name='auth_logout'),
     # SkillHub ZA Core Endpoints
     path('api/', include('core.urls')),
 ]

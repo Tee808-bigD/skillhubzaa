@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SocialPost, Story, StorySlide, CommunityEvent, User } from '../types';
 import { FileUploadWithScan } from './FileUploadWithScan';
 import { StoryViewerModal } from './StoryViewerModal';
+import { ReportModal } from './ReportModal';
 import { getPosts, createPost, toggleLikePost, addComment } from '../api/posts';
 import { PostData } from '../api/types';
 import { 
@@ -111,6 +112,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
   // 3-Dot Options & Modals State
   const [openMenuPostId, setOpenMenuPostId] = useState<string | null>(null);
   const [postToDelete, setPostToDelete] = useState<SocialPost | null>(null);
+  const [reportingPost, setReportingPost] = useState<SocialPost | null>(null);
   const [unfollowedUsers, setUnfollowedUsers] = useState<string[]>([]);
   const [favoritedPostIds, setFavoritedPostIds] = useState<string[]>([]);
   const [aboutAccountModalPost, setAboutAccountModalPost] = useState<SocialPost | null>(null);
@@ -759,7 +761,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
                           <button
                             onClick={() => {
                               setOpenMenuPostId(null);
-                              showToast('Report submitted for moderation review.');
+                              setReportingPost(post);
                             }}
                             className="w-full px-4 py-2.5 text-left text-rose-500 hover:bg-neutral-800/80 font-bold flex items-center justify-between transition"
                           >
@@ -1581,6 +1583,18 @@ export const FeedView: React.FC<FeedViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report Modal */}
+      {reportingPost && (
+        <ReportModal
+          isOpen={true}
+          onClose={() => setReportingPost(null)}
+          contentType="post"
+          contentId={reportingPost.id}
+          contentPreview={reportingPost.content}
+          onSuccess={() => showToast('Thank you. Our moderation team will review this content.')}
+        />
       )}
 
     </div>

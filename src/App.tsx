@@ -59,6 +59,10 @@ import { LearningResourcesView } from './components/LearningResourcesView';
 import { AddResourceModal } from './components/AddResourceModal';
 import { DjangoBackendModal } from './components/DjangoBackendModal';
 import { Login } from './components/Login';
+import { SignUp } from './components/SignUp';
+import { DMCAForm } from './components/DMCAForm';
+import { CookieConsent } from './components/CookieConsent';
+import { AuthProvider } from './contexts/AuthContext';
 import { isUserLoggedIn, clearTokens } from './api/client';
 import { UserSummary } from './api/types';
 
@@ -129,7 +133,7 @@ const normalizeStoriesList = (list: Story[], userName: string, userAvatar: strin
   return result;
 };
 
-export default function App() {
+function AppContent() {
   // Navigation State (default to social media feed)
   const [currentView, setCurrentView] = useState<MainView>('feed');
   const [viewedProfileUser, setViewedProfileUser] = useState<User | null>(null);
@@ -295,6 +299,8 @@ export default function App() {
   // Authentication & SimpleJWT Session State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => isUserLoggedIn());
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState<boolean>(false);
+  const [isDMCAOpen, setIsDMCAOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const handleAuthLogout = () => setIsAuthenticated(false);
@@ -1129,11 +1135,47 @@ export default function App() {
           isModal
           onSuccess={handleLoginSuccess}
           onCancel={() => setIsLoginModalOpen(false)}
+          onSwitchToSignUp={() => {
+            setIsLoginModalOpen(false);
+            setIsSignUpModalOpen(true);
+          }}
         />
       )}
+
+      {/* User Registration Modal */}
+      {isSignUpModalOpen && (
+        <SignUp
+          isModal
+          onSuccess={handleLoginSuccess}
+          onCancel={() => setIsSignUpModalOpen(false)}
+          onSwitchToLogin={() => {
+            setIsSignUpModalOpen(false);
+            setIsLoginModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* DMCA / ECTA Takedown Form Modal */}
+      {isDMCAOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="w-full max-w-3xl my-auto">
+            <DMCAForm onBack={() => setIsDMCAOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      <CookieConsent />
 
       <OfflineIndicator />
 
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

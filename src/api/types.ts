@@ -74,6 +74,15 @@ export interface TokenResponse {
   user?: UserSummary;
 }
 
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+  confirm_password: string;
+  full_name?: string;
+  role?: 'youth' | 'mentor' | 'employer' | 'trainer';
+}
+
 export interface RefreshTokenResponse {
   access: string;
 }
