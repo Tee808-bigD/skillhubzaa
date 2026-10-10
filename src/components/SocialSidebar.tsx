@@ -77,7 +77,7 @@ export const SocialSidebar: React.FC<SocialSidebarProps> = ({
     },
     { id: 'search' as MainView, label: 'Search', icon: Search },
     { id: 'map' as MainView, label: 'Interactive Map', icon: MapPin },
-    { id: 'audio_spaces' as MainView, label: 'Live Audio Spaces', icon: Radio },
+    { id: 'audio_spaces' as MainView, label: 'Live Sessions', icon: Radio },
     { 
       id: 'notifications' as MainView, 
       label: 'Notifications', 

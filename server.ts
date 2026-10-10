@@ -1616,6 +1616,130 @@ Respond with pure JSON object:
     return res.status(404).json({ detail: "Reel not found." });
   });
 
+  // DRF Live Sessions & Masterclasses Endpoints
+  let dbSessions = [
+    {
+      id: "session_live_1",
+      title: "Solar Inverter Sizing & Load-Shedding Backup Blueprint",
+      subtitle: "Live trade breakdown: sizing hybrid inverters, lithium battery bank calculations, and SANS CoC safety compliance.",
+      description: "Join master solar technicians for an open workshop. We take real domestic and commercial blueprints, calculate peak surge vs continuous wattage, and discuss wiring safety standards.",
+      category: "Trades",
+      agenda: [
+        "PV system sizing calculations & panel string voltage formulas",
+        "Lithium LiFePO4 battery selection & C-rate discharge curves",
+        "Load-shedding automated switchover and SANS wiring compliance",
+        "Live Q&A: troubleshooting error codes on Deye & Sunsynk systems"
+      ],
+      host: {
+        id: "usr_sbusiso_solar",
+        username: "sbusiso_solar",
+        full_name: "Sbusiso Dlamini",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
+        role: "Master Solar Technician & Installer",
+        rating: 4.95,
+        verified: true,
+        is_top_rated: true
+      },
+      status: "live",
+      speakers_count: 3,
+      listeners_count: 64,
+      duration: "60 mins",
+      is_paid: false,
+      price_amount: 0,
+      price_currency: "$",
+      created_at: new Date(Date.now() - 3600000).toISOString()
+    },
+    {
+      id: "session_live_2",
+      title: "From Junior Dev to $4,000/mo Remote Contracts: The Global Playbook",
+      subtitle: "Proven tactics on landing international software clients from Africa, structuring contracts, and timezone management.",
+      description: "An exclusive, paid intimate session breaking down cold outreach that converts, GitHub portfolio auditing, and payment protection with escrow.",
+      category: "Tech",
+      agenda: [
+        "Positioning your GitHub and LinkedIn for US & European recruiters",
+        "The 3-tier freelance proposal that beats low-ball bids",
+        "Tax compliance, foreign currency accounts, and international wire handling",
+        "Direct resume and portfolio teardown for 4 live participants"
+      ],
+      host: {
+        id: "usr_thandiwe_dr",
+        username: "thandiwe_tech",
+        full_name: "Dr. Thandiwe Khumalo",
+        avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80",
+        role: "Engineering Director & Tech Career Coach",
+        rating: 4.98,
+        verified: true,
+        is_top_rated: true
+      },
+      status: "live",
+      speakers_count: 2,
+      listeners_count: 118,
+      duration: "75 mins",
+      is_paid: true,
+      price_amount: 25,
+      price_currency: "$",
+      created_at: new Date(Date.now() - 1800000).toISOString()
+    }
+  ];
+
+  app.get("/api/sessions", (req, res) => {
+    const { status, category, search } = req.query;
+    let list = [...dbSessions];
+    if (status) {
+      list = list.filter(s => s.status === status);
+    }
+    if (category && category !== "All") {
+      list = list.filter(s => s.category === category);
+    }
+    if (search) {
+      const q = String(search).toLowerCase();
+      list = list.filter(s => 
+        s.title.toLowerCase().includes(q) || 
+        s.host.full_name.toLowerCase().includes(q) ||
+        (s.subtitle && s.subtitle.toLowerCase().includes(q))
+      );
+    }
+    res.json(list);
+  });
+  app.get("/api/sessions/", (req, res) => {
+    res.json(dbSessions);
+  });
+
+  app.post("/api/sessions", (req, res) => {
+    const data = req.body || {};
+    const newSession = {
+      id: `session_${Date.now()}`,
+      title: data.title || "Untitled Session",
+      subtitle: data.subtitle || "",
+      description: data.description || "",
+      category: data.category || "Tech",
+      agenda: data.agenda || ["Overview & Discussion"],
+      host: {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        full_name: "Thando Mzobe",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+        role: "Full-Stack Engineer & Creator",
+        rating: 5.0,
+        verified: true,
+        is_top_rated: true
+      },
+      status: data.status || "live",
+      speakers_count: 1,
+      listeners_count: data.status === "live" ? 1 : 0,
+      duration: data.duration || "60 mins",
+      is_paid: !!data.is_paid,
+      price_amount: data.price_amount || 0,
+      price_currency: "$",
+      created_at: new Date().toISOString()
+    };
+    dbSessions.unshift(newSession);
+    res.status(201).json(newSession);
+  });
+  app.post("/api/sessions/", (req, res) => {
+    res.status(201).json(dbSessions[0]);
+  });
+
   // DRF Chat Rooms & Messaging Endpoints (Phase 3 Channels Support)
   let dbRooms = [
     {

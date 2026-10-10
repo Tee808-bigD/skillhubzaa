@@ -1,262 +1,464 @@
-import React, { useState } from 'react';
-import { User, Mentor } from '../types';
-import { Mic, MicOff, Radio, Volume2, Users, Hand, MessageSquare, Plus, Sparkles, ShieldCheck } from 'lucide-react';
-
-interface AudioRoom {
-  id: string;
-  title: string;
-  topic: string;
-  hostName: string;
-  hostAvatar: string;
-  hostRole: string;
-  speakersCount: number;
-  listenersCount: number;
-  isLive: boolean;
-  speakers: { id: string; name: string; avatar: string; role: string; isSpeaking: boolean }[];
-  listeners: { id: string; name: string; avatar: string }[];
-}
+import React, { useState, useMemo } from 'react';
+import { User, Mentor, LiveSession, SessionTab, SessionCategory } from '../types';
+import { initialLiveSessions } from '../data/mockLiveSessions';
+import { SessionCard } from './SessionCard';
+import { ActiveSessionRoom } from './ActiveSessionRoom';
+import { HostSessionModal } from './HostSessionModal';
+import { 
+  Radio, 
+  Plus, 
+  Search, 
+  Filter, 
+  DollarSign, 
+  Calendar, 
+  Play, 
+  Heart, 
+  Sparkles, 
+  ShieldCheck, 
+  Volume2, 
+  Users,
+  Briefcase,
+  HelpCircle,
+  TrendingUp,
+  Award
+} from 'lucide-react';
 
 interface LiveAudioSpacesViewProps {
   currentUser: User;
   mentors: Mentor[];
+  onOpenProfile?: (user: Partial<User>) => void;
+  onBookService?: (serviceId: string) => void;
 }
 
 export const LiveAudioSpacesView: React.FC<LiveAudioSpacesViewProps> = ({
   currentUser,
-  mentors
+  mentors,
+  onOpenProfile,
+  onBookService
 }) => {
-  const [activeRoom, setActiveRoom] = useState<AudioRoom | null>(null);
-  const [isMicOn, setIsMicOn] = useState(false);
-  const [hasRaisedHand, setHasRaisedHand] = useState(false);
-
-  // Mock audio rooms
-  const initialRooms: AudioRoom[] = [
-    {
-      id: 'room_1',
-      title: 'Solar Installation & Electrical Trade Office Hours',
-      topic: 'Clean Energy & PV Inverter Sizing in SA Townships',
-      hostName: 'Sbusiso Dlamini',
-      hostAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-      hostRole: 'Master Solar Technician',
-      speakersCount: 3,
-      listenersCount: 42,
-      isLive: true,
-      speakers: [
-        { id: 'spk_1', name: 'Sbusiso Dlamini', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80', role: 'Host', isSpeaking: true },
-        { id: 'spk_2', name: 'Nomvula Sithole', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80', role: 'Solar Engineer', isSpeaking: false },
-        { id: 'spk_3', name: 'Kevin Van Zyl', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80', role: 'SETA Assessor', isSpeaking: false }
-      ],
-      listeners: [
-        { id: 'lst_1', name: 'Thabo M.', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80' },
-        { id: 'lst_2', name: 'Lerato K.', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80' },
-        { id: 'lst_3', name: 'Zizipho B.', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80' }
-      ]
-    },
-    {
-      id: 'room_2',
-      title: 'Junior Tech Resume & Portfolio Teardown',
-      topic: 'How to land remote software internships from KZN & Gauteng',
-      hostName: 'Dr. Thandiwe Khumalo',
-      hostAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-      hostRole: 'Engineering Director & Mentor',
-      speakersCount: 2,
-      listenersCount: 88,
-      isLive: true,
-      speakers: [
-        { id: 'spk_4', name: 'Dr. Thandiwe Khumalo', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80', role: 'Host', isSpeaking: true },
-        { id: 'spk_5', name: 'Michael Chen', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80', role: 'Tech Lead', isSpeaking: false }
-      ],
-      listeners: [
-        { id: 'lst_4', name: 'Ayo B.', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop&q=80' }
-      ]
+  // State
+  const [sessions, setSessions] = useState<LiveSession[]>(() => {
+    try {
+      const saved = localStorage.getItem('skillhub_live_sessions');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      // Fallback
     }
-  ];
+    return initialLiveSessions;
+  });
+
+  const [activeTab, setActiveTab] = useState<SessionTab>('live');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<SessionCategory>('All');
+  const [sortBy, setSortBy] = useState<'starting_soon' | 'most_listeners' | 'top_rated'>('starting_soon');
+  const [activeRoom, setActiveRoom] = useState<LiveSession | null>(null);
+
+  // Host modal state
+  const [isHostModalOpen, setIsHostModalOpen] = useState(false);
+  const [hostModalType, setHostModalType] = useState<'free' | 'paid'>('free');
+
+  // Followed host IDs state
+  const [followedHostIds, setFollowedHostIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('skillhub_followed_hosts');
+      return saved ? JSON.parse(saved) : ['usr_sbusiso_solar', 'usr_thandiwe_dr'];
+    } catch {
+      return ['usr_sbusiso_solar', 'usr_thandiwe_dr'];
+    }
+  });
+
+  // Notified session IDs state
+  const [notifiedSessionIds, setNotifiedSessionIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('skillhub_notified_sessions');
+      return saved ? JSON.parse(saved) : ['session_upcoming_2'];
+    } catch {
+      return ['session_upcoming_2'];
+    }
+  });
+
+  // Save changes to localStorage
+  const saveSessions = (updated: LiveSession[]) => {
+    setSessions(updated);
+    try {
+      localStorage.setItem('skillhub_live_sessions', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Storage quota exceeded');
+    }
+  };
+
+  const handleToggleFollowHost = (hostId: string) => {
+    setFollowedHostIds(prev => {
+      const next = prev.includes(hostId) ? prev.filter(id => id !== hostId) : [...prev, hostId];
+      try {
+        localStorage.setItem('skillhub_followed_hosts', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+
+    setSessions(prev =>
+      prev.map(s => {
+        if (s.hostId === hostId) {
+          return { ...s, isFollowed: !s.isFollowed };
+        }
+        return s;
+      })
+    );
+  };
+
+  const handleToggleNotify = (sessionId: string) => {
+    setNotifiedSessionIds(prev => {
+      const next = prev.includes(sessionId) ? prev.filter(id => id !== sessionId) : [...prev, sessionId];
+      try {
+        localStorage.setItem('skillhub_notified_sessions', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+
+    setSessions(prev =>
+      prev.map(s => {
+        if (s.id === sessionId) {
+          const isNotified = !s.isNotified;
+          alert(isNotified ? 'Subscribed! You will receive a notification when this session starts.' : 'Unsubscribed from session alerts.');
+          return { ...s, isNotified };
+        }
+        return s;
+      })
+    );
+  };
+
+  const handleCreateSession = (newSessionData: Partial<LiveSession>) => {
+    const newSession: LiveSession = {
+      id: `session_${Date.now()}`,
+      title: newSessionData.title || 'Live Session',
+      subtitle: newSessionData.subtitle || '',
+      description: newSessionData.description || '',
+      category: newSessionData.category || 'Tech',
+      agenda: newSessionData.agenda || ['Core insights and discussion'],
+      hostId: currentUser.id,
+      hostName: currentUser.name,
+      hostUsername: currentUser.handle?.replace('@', '') || currentUser.name.toLowerCase().replace(/\s+/g, '_'),
+      hostAvatar: currentUser.avatar,
+      hostRole: currentUser.title || currentUser.bio || 'Verified Host',
+      hostRating: currentUser.rating || 5.0,
+      hostVerified: true,
+      isTopRated: true,
+      status: newSessionData.status || 'live',
+      speakersCount: 1,
+      listenersCount: newSessionData.status === 'live' ? 1 : 0,
+      duration: newSessionData.duration || '60 mins',
+      scheduledFor: newSessionData.scheduledFor,
+      scheduledDateFormatted: newSessionData.scheduledDateFormatted || 'Just scheduled',
+      startsInText: newSessionData.status === 'live' ? 'Live Now' : 'Scheduled',
+      isPaid: !!newSessionData.isPaid,
+      priceAmount: newSessionData.priceAmount || 0,
+      priceCurrency: '$',
+      speakers: newSessionData.speakers || [
+        {
+          id: currentUser.id,
+          name: currentUser.name,
+          avatar: currentUser.avatar,
+          role: 'Host',
+          isSpeaking: true
+        }
+      ],
+      listeners: []
+    };
+
+    const updated = [newSession, ...sessions];
+    saveSessions(updated);
+    setIsHostModalOpen(false);
+
+    if (newSession.status === 'live') {
+      setActiveRoom(newSession);
+    } else {
+      setActiveTab('upcoming');
+      alert('Upcoming session scheduled! Registration is now live on SkillHub.');
+    }
+  };
+
+  // Filtered & Sorted Sessions
+  const filteredSessions = useMemo(() => {
+    return sessions.filter(session => {
+      // 1. Tab Match
+      if (activeTab === 'live' && session.status !== 'live') return false;
+      if (activeTab === 'upcoming' && session.status !== 'upcoming') return false;
+      if (activeTab === 'replays' && session.status !== 'replay') return false;
+      if (activeTab === 'my_spaces') {
+        const isHosting = session.hostId === currentUser.id;
+        const isAttending = session.isNotified || followedHostIds.includes(session.hostId);
+        if (!isHosting && !isAttending) return false;
+      }
+
+      // 2. Search Query Match
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesTitle = session.title.toLowerCase().includes(q);
+        const matchesHost = session.hostName.toLowerCase().includes(q);
+        const matchesTopic = (session.subtitle || '').toLowerCase().includes(q);
+        const matchesAgenda = session.agenda.some(a => a.toLowerCase().includes(q));
+        if (!matchesTitle && !matchesHost && !matchesTopic && !matchesAgenda) return false;
+      }
+
+      // 3. Category Filter
+      if (selectedCategory === 'Free' && session.isPaid) return false;
+      if (selectedCategory === 'Paid' && !session.isPaid) return false;
+      if (
+        selectedCategory !== 'All' && 
+        selectedCategory !== 'Free' && 
+        selectedCategory !== 'Paid' && 
+        session.category !== selectedCategory
+      ) {
+        return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'most_listeners') {
+        return (b.listenersCount + (b.replayViewsCount || 0)) - (a.listenersCount + (a.replayViewsCount || 0));
+      }
+      if (sortBy === 'top_rated') {
+        return (b.hostRating || 0) - (a.hostRating || 0);
+      }
+      // Default: starting_soon / active
+      return 0;
+    });
+  }, [sessions, activeTab, searchQuery, selectedCategory, sortBy, currentUser.id, followedHostIds]);
+
+  const liveCount = sessions.filter(s => s.status === 'live').length;
+  const upcomingCount = sessions.filter(s => s.status === 'upcoming').length;
+  const replaysCount = sessions.filter(s => s.status === 'replay').length;
+  const mySpacesCount = sessions.filter(s => s.hostId === currentUser.id || s.isNotified || followedHostIds.includes(s.hostId)).length;
 
   return (
-    <div className="space-y-6 text-white">
+    <div className="space-y-6 text-white max-w-7xl mx-auto pb-12 animate-in fade-in duration-200">
       
-      {/* Title Header */}
-      <div className="bg-[#1e1e1e] p-5 rounded-3xl border border-neutral-800 shadow-xl flex flex-wrap items-center justify-between gap-4">
-        <div>
+      {/* 1. Header Section */}
+      <div className="bg-[#18181b] p-6 md:p-8 rounded-3xl border border-neutral-800 shadow-xl flex flex-wrap items-center justify-between gap-6 relative overflow-hidden">
+        <div className="space-y-1.5 max-w-2xl relative z-10">
           <div className="flex items-center gap-2">
             <Radio className="w-5 h-5 text-rose-500 animate-pulse" />
-            <h1 className="text-xl font-black text-white">SkillHub Live Audio Spaces</h1>
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+              Live Sessions & Masterclasses
+            </h1>
           </div>
-          <p className="text-xs text-neutral-400 mt-1">Drop-in audio conversations, trade office hours, and mentor Q&As</p>
+          <p className="text-xs md:text-sm text-neutral-400 font-medium">
+            Join live discussions, learn from industry experts, and network with professionals worldwide.
+          </p>
         </div>
 
+        {/* Action Buttons: Start Free Space & Host Paid Masterclass */}
+        <div className="flex items-center gap-3 flex-wrap relative z-10">
+          <button
+            onClick={() => {
+              setHostModalType('free');
+              setIsHostModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-2xl border border-neutral-700 shadow-lg transition hover:scale-105"
+          >
+            <Plus className="w-4 h-4 text-emerald-400" />
+            <span>Start a Free Space</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setHostModalType('paid');
+              setIsHostModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-2xl shadow-xl shadow-emerald-500/20 transition hover:scale-105"
+          >
+            <DollarSign className="w-4 h-4 -mr-1" />
+            <span>Host a Paid Masterclass</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Active Stage View (If user joined a room) */}
+      {activeRoom && (
+        <ActiveSessionRoom
+          session={activeRoom}
+          currentUser={currentUser}
+          onLeave={() => setActiveRoom(null)}
+          onOpenProfile={onOpenProfile}
+          onBookService={onBookService}
+        />
+      )}
+
+      {/* 3. Discovery Tabs: Live Now, Upcoming, Replays, My Spaces */}
+      <div className="flex items-center gap-2 border-b border-neutral-800 pb-3 overflow-x-auto scrollbar-none">
         <button
-          onClick={() => {
-            const newRoom: AudioRoom = {
-              id: `room_${Date.now()}`,
-              title: `${currentUser.name}'s Skill Stage`,
-              topic: 'Q&A & Career Discussion',
-              hostName: currentUser.name,
-              hostAvatar: currentUser.avatar,
-              hostRole: currentUser.bio || 'SkillHub Creator',
-              speakersCount: 1,
-              listenersCount: 1,
-              isLive: true,
-              speakers: [{ id: 'me', name: currentUser.name, avatar: currentUser.avatar, role: 'Host', isSpeaking: true }],
-              listeners: []
-            };
-            setActiveRoom(newRoom);
-          }}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-500 hover:bg-rose-400 text-white font-black text-xs rounded-xl shadow-lg transition-all hover:scale-105"
+          onClick={() => setActiveTab('live')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs transition shrink-0 ${
+            activeTab === 'live'
+              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+          }`}
         >
-          <Plus className="w-4 h-4" />
-          <span>Start Audio Space</span>
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+          <span>Live Now</span>
+          <span className="px-1.5 py-0.2 bg-rose-500/20 text-rose-300 rounded text-[10px]">
+            {liveCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('upcoming')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs transition shrink-0 ${
+            activeTab === 'upcoming'
+              ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Upcoming</span>
+          <span className="px-1.5 py-0.2 bg-indigo-500/20 text-indigo-300 rounded text-[10px]">
+            {upcomingCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('replays')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs transition shrink-0 ${
+            activeTab === 'replays'
+              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+          }`}
+        >
+          <Play className="w-4 h-4" />
+          <span>Replays</span>
+          <span className="px-1.5 py-0.2 bg-cyan-500/20 text-cyan-300 rounded text-[10px]">
+            {replaysCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('my_spaces')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs transition shrink-0 ${
+            activeTab === 'my_spaces'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+          }`}
+        >
+          <Heart className="w-4 h-4" />
+          <span>My Spaces</span>
+          <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded text-[10px]">
+            {mySpacesCount}
+          </span>
         </button>
       </div>
 
-      {/* Active Room View */}
-      {activeRoom ? (
-        <div className="bg-[#1e1e1e] rounded-3xl border border-rose-500/30 p-6 shadow-2xl space-y-6 relative overflow-hidden">
-          
-          <div className="flex items-start justify-between border-b border-neutral-800 pb-4">
-            <div>
-              <span className="px-2.5 py-1 bg-rose-500/20 text-rose-400 font-black text-[10px] rounded-md uppercase tracking-wider border border-rose-500/30">
-                🔴 LIVE AUDIO STAGE
-              </span>
-              <h2 className="text-lg font-black text-white mt-2">{activeRoom.title}</h2>
-              <p className="text-xs text-neutral-400 mt-0.5">{activeRoom.topic}</p>
-            </div>
+      {/* 4. Search, Categories & Sort Controls */}
+      <div className="bg-[#18181b] p-4 rounded-3xl border border-neutral-800 space-y-4">
+        
+        {/* Search bar & Sort Dropdown */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search sessions, hosts, or topics (e.g. solar inverter, figma, next.js)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-xl text-white text-xs placeholder:text-neutral-500 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
 
-            <button
-              onClick={() => setActiveRoom(null)}
-              className="px-3.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold text-neutral-300 rounded-xl"
+          <div className="flex items-center gap-2">
+            <span className="text-neutral-400 text-xs font-semibold">Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
             >
-              Leave Room
-            </button>
+              <option value="starting_soon">Starting Soon</option>
+              <option value="most_listeners">Most Listeners</option>
+              <option value="top_rated">Top Rated Hosts</option>
+            </select>
           </div>
-
-          {/* Speakers Stage Grid */}
-          <div>
-            <h3 className="text-xs font-black text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Volume2 className="w-4 h-4 text-emerald-400" />
-              <span>Speakers Stage ({activeRoom.speakers.length})</span>
-            </h3>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {activeRoom.speakers.map((spk) => (
-                <div
-                  key={spk.id}
-                  className="bg-[#141414] border border-neutral-800 p-4 rounded-2xl flex flex-col items-center text-center relative group"
-                >
-                  {/* Speaker Glow Ring */}
-                  <div className={`relative mb-2 ${spk.isSpeaking ? 'ring-4 ring-emerald-500 rounded-full animate-pulse' : ''}`}>
-                    <img src={spk.avatar} alt={spk.name} className="w-16 h-16 rounded-full object-cover" />
-                    {spk.isSpeaking && (
-                      <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-[#141414] rounded-full"></span>
-                    )}
-                  </div>
-                  <h4 className="font-extrabold text-xs text-white truncate max-w-full">{spk.name}</h4>
-                  <span className="text-[10px] font-bold text-neutral-400 mt-0.5">{spk.role}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Audience Section */}
-          <div>
-            <h3 className="text-xs font-black text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Users className="w-4 h-4 text-cyan-400" />
-              <span>Audience ({activeRoom.listenersCount} Listening)</span>
-            </h3>
-
-            <div className="flex flex-wrap gap-2">
-              {activeRoom.listeners.map((lst) => (
-                <div key={lst.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#121212] border border-neutral-800 rounded-full">
-                  <img src={lst.avatar} alt={lst.name} className="w-5 h-5 rounded-full object-cover" />
-                  <span className="text-xs font-bold text-neutral-300">{lst.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Bottom Audio Controls */}
-          <div className="pt-4 border-t border-neutral-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsMicOn(!isMicOn)}
-                className={`p-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all ${
-                  isMicOn ? 'bg-emerald-500 text-slate-950 font-black' : 'bg-neutral-800 text-neutral-300 hover:text-white'
-                }`}
-              >
-                {isMicOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                <span>{isMicOn ? 'Mic Unmuted' : 'Muted'}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setHasRaisedHand(!hasRaisedHand);
-                  alert(hasRaisedHand ? 'Lowered hand' : 'Hand raised! Host notified.');
-                }}
-                className={`p-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all ${
-                  hasRaisedHand ? 'bg-amber-500 text-slate-950 font-black' : 'bg-neutral-800 text-neutral-300 hover:text-white'
-                }`}
-              >
-                <Hand className="w-4 h-4" />
-                <span>{hasRaisedHand ? 'Hand Raised' : 'Raise Hand'}</span>
-              </button>
-            </div>
-
-            <div className="text-xs text-neutral-400 font-bold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>SkillHub End-to-End Audio Active</span>
-            </div>
-          </div>
-
         </div>
-      ) : (
-        /* List of Available Live Rooms */
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {initialRooms.map((room) => (
-            <div
-              key={room.id}
-              className="bg-[#1e1e1e] rounded-3xl border border-neutral-800 p-6 shadow-xl space-y-4 hover:border-emerald-500/50 transition-all group"
+
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-neutral-800/80">
+          {(['All', 'Tech', 'Design', 'Trades', 'Business', 'Career', 'Free', 'Paid'] as SessionCategory[]).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                selectedCategory === cat
+                  ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
+                  : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+              }`}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="px-2.5 py-0.5 bg-rose-500/20 text-rose-400 font-black text-[10px] rounded-md uppercase tracking-wider border border-rose-500/30 flex items-center gap-1 w-fit">
-                    <Radio className="w-3 h-3 animate-pulse" />
-                    LIVE STAGE
-                  </span>
-                  <h3 className="font-extrabold text-base text-white mt-2 group-hover:text-emerald-400 transition">{room.title}</h3>
-                  <p className="text-xs text-neutral-400 mt-1">{room.topic}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 bg-[#121212] p-3 rounded-2xl border border-neutral-800">
-                <img src={room.hostAvatar} alt={room.hostName} className="w-10 h-10 rounded-full object-cover border-2 border-emerald-500" />
-                <div>
-                  <h4 className="text-xs font-black text-white">{room.hostName}</h4>
-                  <p className="text-[11px] text-neutral-400">{room.hostRole}</p>
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between">
-                <div className="flex items-center gap-3 text-xs text-neutral-400 font-bold">
-                  <span className="flex items-center gap-1">
-                    <Volume2 className="w-4 h-4 text-emerald-400" />
-                    {room.speakersCount} Speakers
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4 text-cyan-400" />
-                    {room.listenersCount} Listening
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => setActiveRoom(room)}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition hover:scale-105"
-                >
-                  Join Audio Stage
-                </button>
-              </div>
-            </div>
+              {cat === 'Paid' ? '💰 Paid Masterclasses' : cat === 'Free' ? '🎁 Free Sessions' : cat}
+            </button>
           ))}
         </div>
+
+      </div>
+
+      {/* 5. Sessions Grid */}
+      {filteredSessions.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {filteredSessions.map((session) => (
+            <SessionCard
+              key={session.id}
+              session={session}
+              currentUser={currentUser}
+              onJoinSession={(s) => setActiveRoom(s)}
+              onToggleNotify={handleToggleNotify}
+              onToggleFollowHost={handleToggleFollowHost}
+              onOpenProfile={onOpenProfile}
+              onBookService={onBookService}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="bg-[#18181b] border border-neutral-800 rounded-3xl p-10 text-center space-y-4 max-w-lg mx-auto">
+          <div className="w-14 h-14 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center mx-auto text-neutral-400">
+            <Radio className="w-7 h-7 text-neutral-500" />
+          </div>
+          <div>
+            <h3 className="text-base font-black text-white">No sessions found</h3>
+            <p className="text-xs text-neutral-400 mt-1">
+              {searchQuery
+                ? `No sessions match "${searchQuery}". Try a different keyword or category.`
+                : activeTab === 'my_spaces'
+                ? "You haven't hosted or bookmarked any sessions yet."
+                : "No active sessions currently scheduled in this category."}
+            </p>
+          </div>
+
+          <div className="pt-2 flex items-center justify-center gap-3">
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold rounded-xl"
+              >
+                Clear Search
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setHostModalType('free');
+                setIsHostModalOpen(true);
+              }}
+              className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-md"
+            >
+              Host the First Session
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Host Session Modal */}
+      {isHostModalOpen && (
+        <HostSessionModal
+          currentUser={currentUser}
+          initialType={hostModalType}
+          onClose={() => setIsHostModalOpen(false)}
+          onSubmit={handleCreateSession}
+        />
       )}
 
     </div>

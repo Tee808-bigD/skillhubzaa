@@ -433,3 +433,60 @@ export interface ChatConversation {
   unreadCount: number;
   messages: ChatMessage[];
 }
+
+export type SessionTab = 'live' | 'upcoming' | 'replays' | 'my_spaces';
+
+export type SessionCategory = 
+  | 'All' 
+  | 'Tech' 
+  | 'Design' 
+  | 'Trades' 
+  | 'Business' 
+  | 'Career' 
+  | 'Free' 
+  | 'Paid';
+
+export interface SessionSpeaker {
+  id: string;
+  name: string;
+  avatar: string;
+  role: string;
+  isSpeaking?: boolean;
+}
+
+export interface LiveSession {
+  id: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  category: 'Tech' | 'Design' | 'Trades' | 'Business' | 'Career';
+  agenda: string[];
+  hostId: string;
+  hostName: string;
+  hostUsername: string;
+  hostAvatar: string;
+  hostRole: string;
+  hostRating?: number;
+  hostVerified?: boolean;
+  isTopRated?: boolean;
+  status: 'live' | 'upcoming' | 'replay';
+  speakersCount: number;
+  listenersCount: number;
+  duration: string; // e.g. "45 mins", "60 mins"
+  scheduledFor?: string; // e.g. "2026-10-12T14:00:00Z"
+  scheduledDateFormatted?: string; // e.g. "Monday, Oct 12 • 14:00 SAST"
+  startsInText?: string; // e.g. "Starts in 2 days"
+  isPaid: boolean;
+  priceAmount?: number; // e.g. 25
+  priceCurrency?: string; // e.g. "$" or "R"
+  speakers: SessionSpeaker[];
+  listeners: { id: string; name: string; avatar: string }[];
+  isFollowed?: boolean;
+  isNotified?: boolean;
+  replayDuration?: string;
+  recordingUrl?: string;
+  recordingAudioPreview?: string;
+  replayViewsCount?: number;
+  linkedServiceId?: string;
+  linkedServiceTitle?: string;
+}

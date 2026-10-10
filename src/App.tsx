@@ -1099,6 +1099,15 @@ function AppContent() {
             <LiveAudioSpacesView
               currentUser={user}
               mentors={mentors}
+              onOpenProfile={handleOpenUserProfile}
+              onBookService={(serviceId) => {
+                const svc = services.find(s => s.id === serviceId);
+                if (svc) {
+                  setEscrowServiceModal(svc);
+                } else {
+                  setCurrentView('services');
+                }
+              }}
             />
           )}
 
