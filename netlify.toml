@@ -6,6 +6,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 # SPA Fallback: Direct all browser routes to index.html with 200 OK
 [[redirects]]
