@@ -34,7 +34,8 @@ import {
 } from './data/mockData';
 import { initialExternalCourses } from './data/mockExternalCourses';
 
-import { SocialSidebar } from './components/SocialSidebar';
+import { Sidebar, SocialSidebar } from './components/Sidebar';
+import { MyJobsOrdersView } from './components/MyJobsOrdersView';
 import { FeedView } from './components/FeedView';
 import { ReelsView } from './components/ReelsView';
 import { MessagesView } from './components/MessagesView';
@@ -980,19 +981,21 @@ function AppContent() {
     <div className="min-h-screen bg-[#121212] text-slate-100 flex">
       
       {/* Left Social Navigation Sidebar */}
-      <SocialSidebar
+      <Sidebar
         currentView={currentView}
         onSelectView={(v) => {
           if (v === 'profile') setViewedProfileUser(null);
           setCurrentView(v);
         }}
         currentUser={user}
+        userRole={user.role}
         unreadMessagesCount={1}
         unreadNotifsCount={unreadNotifCount}
         onOpenCreate={() => setIsCreatePostModalOpen(true)}
-        onOpenDjangoBackend={() => setIsDjangoBackendOpen(true)}
         isAuthenticated={isAuthenticated}
         onOpenLogin={() => setIsLoginModalOpen(true)}
+        onOpenSignUp={() => setIsSignUpModalOpen(true)}
+        onPostJob={() => setIsCreatePostModalOpen(true)}
         onLogout={handleLogout}
         onOpenLegalDoc={(type) => setActiveLegalModal(type)}
       />
@@ -1271,6 +1274,16 @@ function AppContent() {
               notifications={notifications}
               onMarkAllAsRead={handleMarkAllNotificationsRead}
               onNavigateView={setCurrentView}
+            />
+          )}
+
+          {/* My Jobs / Orders */}
+          {currentView === 'jobs_orders' && (
+            <MyJobsOrdersView
+              currentUser={user}
+              onOpenChat={handleOpenDirectChat}
+              onNavigateView={setCurrentView}
+              onPostJob={() => setIsCreatePostModalOpen(true)}
             />
           )}
 

@@ -301,7 +301,8 @@ export type MainView =
   | 'ai_advisor' 
   | 'profile' 
   | 'bookmarks' 
-  | 'notifications';
+  | 'notifications'
+  | 'jobs_orders';
 
 export interface SocialPost {
   id: string;
