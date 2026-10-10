@@ -3,6 +3,10 @@ import { SocialPost, Story, StorySlide, CommunityEvent, User } from '../types';
 import { FileUploadWithScan } from './FileUploadWithScan';
 import { StoryViewerModal } from './StoryViewerModal';
 import { ReportModal } from './ReportModal';
+import { HeroSection } from './HeroSection';
+import { TopRatedProfessionals } from './TopRatedProfessionals';
+import { Composer, ComposerSubmitData } from './Composer';
+import { RightWidgets } from './RightWidgets';
 import { getPosts, createPost, toggleLikePost, addComment } from '../api/posts';
 import { PostData } from '../api/types';
 import { 
@@ -34,9 +38,13 @@ import {
   Trash2,
   Check,
   ShieldCheck,
+  CheckCircle2,
   MapPin,
   Server,
-  RefreshCw
+  RefreshCw,
+  Globe2,
+  DollarSign,
+  Clock
 } from 'lucide-react';
 
 interface FeedViewProps {
@@ -48,6 +56,7 @@ interface FeedViewProps {
   onAddPost: (post: SocialPost) => void;
   onAddStory?: (story: Story) => void;
   onDeleteStorySlide?: (storyId: string, slideId: string) => void;
+  onReactToStorySlide?: (storyId: string, slideId: string, emoji: string) => void;
   onToggleBookmarkPost?: (postId: string) => void;
   onDeletePost?: (postId: string) => void;
   onOpenDirectChat: (participantName: string) => void;
@@ -56,6 +65,10 @@ interface FeedViewProps {
   onSelectEvent?: (event: CommunityEvent) => void;
   onOpenProfile?: (user: Partial<User>) => void;
   onOpenDjangoBackend?: () => void;
+  isAuthenticated?: boolean;
+  onOpenLogin?: () => void;
+  onOpenSignUp?: () => void;
+  onSelectCategory?: (category: string) => void;
 }
 
 export const FeedView: React.FC<FeedViewProps> = ({
@@ -67,6 +80,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
   onAddPost,
   onAddStory,
   onDeleteStorySlide,
+  onReactToStorySlide,
   onToggleBookmarkPost,
   onDeletePost,
   onOpenDirectChat,
@@ -74,7 +88,11 @@ export const FeedView: React.FC<FeedViewProps> = ({
   onOpenCreateEvent,
   onSelectEvent,
   onOpenProfile,
-  onOpenDjangoBackend
+  onOpenDjangoBackend,
+  isAuthenticated = false,
+  onOpenLogin,
+  onOpenSignUp,
+  onSelectCategory
 }) => {
   const [composerText, setComposerText] = useState('');
   const [composerMediaUrl, setComposerMediaUrl] = useState('');
@@ -320,7 +338,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
       if (selectedFile) {
         // Construct FormData for Django REST Framework MultiPartParser
         const formData = new FormData();
-        formData.append('content', composerText.trim() || 'Shared a media update with SkillHub ZA.');
+        formData.append('content', composerText.trim() || 'Shared a media update with SkillHub.');
         formData.append('category', 'Tech & Skills');
         if (hashtags.length > 0) {
           formData.append('hashtags', JSON.stringify(hashtags));
@@ -414,272 +432,173 @@ export const FeedView: React.FC<FeedViewProps> = ({
     setNewCommentInput('');
   };
 
+  const handleComposerSubmit = async (data: ComposerSubmitData) => {
+    setIsPublishing(true);
+    try {
+      let created: any;
+      if (data.mediaFile) {
+        const formData = new FormData();
+        formData.append('content', data.content || (data.postType === 'service_request' ? 'Posted a service request' : 'Showcased work'));
+        formData.append('category', data.postType === 'service_request' ? 'Service Request' : 'Tech & Skills');
+        if (data.hashtags.length > 0) {
+          formData.append('hashtags', JSON.stringify(data.hashtags));
+        }
+        if (data.mediaFile.type.startsWith('video/')) {
+          formData.append('video_file', data.mediaFile);
+        } else {
+          formData.append('media_file', data.mediaFile);
+        }
+        created = await createPost(formData);
+      } else {
+        created = await createPost({
+          content: data.content,
+          media_type: data.mediaUrl ? 'image' : 'text',
+          media_url: data.mediaUrl,
+          category: data.postType === 'service_request' ? 'Service Request' : 'Tech & Skills',
+          hashtags: data.hashtags.length > 0 ? data.hashtags : ['SkillHubGlobal', 'RemotePro']
+        });
+      }
+
+      const mediaDisplayUrl = created.media_url || created.video_url || (data.mediaFile ? URL.createObjectURL(data.mediaFile) : data.mediaUrl);
+
+      const formattedPost: SocialPost = {
+        id: created.id || `post_${Date.now()}`,
+        authorId: created.author?.id || currentUser.id,
+        authorName: created.author?.full_name || currentUser.name,
+        authorHandle: created.author?.username ? `@${created.author.username}` : currentUser.handle,
+        authorAvatar: created.author?.avatar || currentUser.avatar,
+        authorLocation: created.author?.location || currentUser.location,
+        authorCountry: currentUser.country || 'Global 🌐',
+        authorRating: currentUser.rating || 4.95,
+        authorVerified: true,
+        authorPrimarySkill: currentUser.primarySkill || currentUser.skills?.[0] || 'Professional Expert',
+        createdAt: 'Just now',
+        content: created.content || data.content,
+        hashtags: created.hashtags || data.hashtags,
+        mediaType: data.mediaFile?.type.startsWith('video/') ? 'video' : (mediaDisplayUrl ? 'image' : undefined),
+        mediaUrl: mediaDisplayUrl,
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
+        isLiked: false,
+        postType: data.postType,
+        serviceRequest: data.serviceRequest
+      };
+
+      setApiPosts(prev => [formattedPost, ...prev]);
+      onAddPost(formattedPost);
+      showToast(data.postType === 'service_request' ? 'Service request published globally! 🚀' : 'Project showcased to global feed! 🌟');
+    } catch (err: any) {
+      console.warn('API post creation fallback:', err);
+      const mediaDisplayUrl = data.mediaFile ? URL.createObjectURL(data.mediaFile) : data.mediaUrl;
+      const fallbackPost: SocialPost = {
+        id: `post_${Date.now()}`,
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+        authorHandle: currentUser.handle,
+        authorAvatar: currentUser.avatar,
+        authorLocation: currentUser.location,
+        authorCountry: currentUser.country || 'Worldwide 🌐',
+        authorRating: 4.95,
+        authorVerified: true,
+        authorPrimarySkill: currentUser.primarySkill || currentUser.skills?.[0] || 'Professional Expert',
+        createdAt: 'Just now',
+        content: data.content,
+        hashtags: data.hashtags.length > 0 ? data.hashtags : ['SkillHubGlobal'],
+        mediaType: data.mediaFile?.type.startsWith('video/') ? 'video' : (mediaDisplayUrl ? 'image' : undefined),
+        mediaUrl: mediaDisplayUrl,
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
+        isLiked: false,
+        postType: data.postType,
+        serviceRequest: data.serviceRequest
+      };
+      setApiPosts(prev => [fallbackPost, ...prev]);
+      onAddPost(fallbackPost);
+      showToast(data.postType === 'service_request' ? 'Service request saved locally.' : 'Showcase saved locally.');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 py-2">
       
       {/* Main Feed Column (8 cols) */}
       <div className="lg:col-span-8 space-y-6">
         
-        {/* Django Backend Architecture Notice & Modal Trigger */}
-        {onOpenDjangoBackend && (
-          <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-indigo-950/70 border border-emerald-500/30 rounded-3xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0 shadow-inner">
-                <Server className="w-5 h-5 text-emerald-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs sm:text-sm font-black text-white">Django REST Framework Backend Initialized</h3>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">Phase 1</span>
-                </div>
-                <p className="text-[11px] text-slate-300">Custom User model, DRF serializers, Admin dashboards, and relational schema for posts, reels, events & marketplace.</p>
-              </div>
-            </div>
-            <button
-              onClick={onOpenDjangoBackend}
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow-md transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"
-            >
-              <Server className="w-4 h-4" />
-              <span>Explore DRF API Hub</span>
-            </button>
-          </div>
-        )}
+        {/* Dynamic Hero Section (Replaces old developer banner) */}
+        <HeroSection
+          currentUser={currentUser}
+          isAuthenticated={!!isAuthenticated}
+          onHirePro={() => {
+            if (typeof window !== 'undefined') {
+              window.history.pushState({}, '', '/search');
+            }
+            onSelectView('search');
+          }}
+          onJoinAsPro={onOpenSignUp || (() => onSelectView('profile'))}
+          onCompleteProfile={() => onSelectView('profile')}
+          onUpdateAvailability={() => {
+            showToast('Your availability is updated: Open for Global Contracts! 🌐');
+          }}
+          onSearch={(query, location) => {
+            if (onSelectCategory && query) {
+              onSelectCategory(query);
+            }
+            if (typeof window !== 'undefined') {
+              const params = new URLSearchParams();
+              if (query) params.set('q', query);
+              if (location && location !== 'Anywhere') params.set('location', location.toLowerCase().replace(/\s+/g, '-'));
+              window.history.pushState({}, '', `/search${params.toString() ? '?' + params.toString() : ''}`);
+            }
+            onSelectView('search');
+          }}
+        />
 
-        {/* Stories Centered Horizontal Carousel (One Window/Circle Per User) */}
-        <div className="bg-[#1e1e1e]/60 p-4 rounded-3xl border border-neutral-800/80 shadow-lg">
-          <div className="flex items-center justify-start sm:justify-center gap-4 overflow-x-auto pb-1 scrollbar-none max-w-full mx-auto">
-            
-            {/* Current User Story Circle ("Your Story") */}
-            <div className="flex flex-col items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  if (myStory && myStory.slides && myStory.slides.length > 0) {
-                    setSelectedStoryId(myStory.id);
-                    setIsStoryViewerOpen(true);
-                  } else {
-                    setIsCreateStoryOpen(true);
-                  }
-                }}
-                className="relative flex flex-col items-center group focus:outline-none"
-                title={myStory && myStory.slides && myStory.slides.length > 0 ? `View Your Story (${myStory.slides.length} slides)` : "Add to Your Story"}
-              >
-                <div className={`w-16 h-16 rounded-full p-0.5 transition-all duration-200 group-hover:scale-105 ${
-                  myStory && myStory.slides && myStory.slides.length > 0
-                    ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500 p-[2.5px] shadow-lg shadow-emerald-500/10'
-                    : 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#121212]'
-                }`}>
-                  <img
-                    src={currentUser.avatar}
-                    alt={currentUser.name}
-                    className="w-full h-full rounded-full object-cover border-2 border-[#121212]"
-                  />
-                </div>
+        {/* Top Rated Professionals Carousel (Replaces old stories) */}
+        <TopRatedProfessionals
+          onBrowseAll={() => {
+            if (typeof window !== 'undefined') {
+              window.history.pushState({}, '', '/search');
+            }
+            onSelectView('search');
+          }}
+          onSelectPro={(pro) => {
+            if (onOpenProfile) {
+              onOpenProfile({ 
+                name: pro.name, 
+                location: `${pro.location}, ${pro.country}`, 
+                avatar: pro.avatar,
+                skills: [pro.primarySkill]
+              });
+            } else {
+              onSelectView('profile');
+            }
+          }}
+          onHirePro={(pro) => {
+            onOpenDirectChat(pro.name);
+            showToast(`Opening direct hire request with ${pro.name}...`);
+          }}
+          onMessagePro={(pro) => {
+            onOpenDirectChat(pro.name);
+          }}
+        />
 
-                {/* Quick Add (+) overlay badge */}
-                <div 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsCreateStoryOpen(true);
-                  }}
-                  className="absolute bottom-0 right-0 p-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-full ring-2 ring-[#121212] shadow-md transition-transform hover:scale-115 cursor-pointer z-10"
-                  title="Add another slide to your story"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                </div>
-              </button>
-
-              <span className="text-[11px] font-bold text-emerald-400 max-w-[85px] truncate text-center">
-                {myStory && myStory.slides && myStory.slides.length > 0 
-                  ? `Your Story (${myStory.slides.length})` 
-                  : '+ Your Story'}
-              </span>
-            </div>
-
-            {/* Other Users' Stories (Exactly 1 circle per user, holding all their slides in 1 window) */}
-            {otherStories.slice(0, 16).map((story) => {
-              const slideCount = (story.slides && story.slides.length > 0) ? story.slides.length : 1;
-              return (
-                <button
-                  key={story.id || story.authorName}
-                  type="button"
-                  onClick={() => {
-                    setSelectedStoryId(story.id);
-                    setIsStoryViewerOpen(true);
-                  }}
-                  className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
-                  title={`View ${story.authorName}'s story (${slideCount} ${slideCount > 1 ? 'slides' : 'slide'})`}
-                >
-                  <div className={`w-16 h-16 rounded-full p-0.5 transition-all duration-200 group-hover:scale-105 ${
-                    story.hasUnseen
-                      ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500 p-[2.5px] shadow-lg'
-                      : 'ring-2 ring-neutral-700'
-                  }`}>
-                    <img
-                      src={story.authorAvatar}
-                      alt={story.authorName}
-                      className="w-full h-full rounded-full object-cover border-2 border-[#121212]"
-                    />
-                  </div>
-                  <span className="text-[11px] font-bold text-neutral-300 max-w-[75px] truncate text-center">
-                    {story.authorName}
-                  </span>
-                </button>
-              );
-            })}
-
-          </div>
-        </div>
-
-        {/* Post Composer Card */}
-        <div className="bg-[#1e1e1e] rounded-3xl p-5 border border-neutral-800 shadow-xl space-y-4">
-          <div className="flex items-start gap-3">
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/20"
-            />
-            <div className="flex-1 space-y-3">
-              <textarea
-                rows={2}
-                placeholder="Share something useful with your community..."
-                value={composerText}
-                onChange={(e) => setComposerText(e.target.value)}
-                className="w-full bg-[#121212] text-white rounded-2xl p-3 text-xs sm:text-sm font-medium border border-neutral-800 focus:outline-none focus:border-emerald-500/50 resize-none placeholder:text-neutral-500"
-              />
-
-              {showMediaInput && (
-                <div className="space-y-3 animate-in fade-in duration-150 p-3 bg-[#141414] rounded-2xl border border-neutral-800">
-                  <FileUploadWithScan
-                    label="Upload File from Device (Malware & Virus Scanned)"
-                    onFileSelect={(url) => {
-                      setComposerMediaUrl(url);
-                    }}
-                  />
-
-                  {!composerMediaUrl.startsWith('data:') ? (
-                    <input
-                      type="text"
-                      placeholder="Or paste Image/Video URL (e.g. https://images.unsplash.com/...)"
-                      value={composerMediaUrl}
-                      onChange={(e) => setComposerMediaUrl(e.target.value)}
-                      className="w-full bg-[#1e1e1e] text-white rounded-xl px-3 py-2 text-xs font-semibold border border-neutral-800 focus:outline-none focus:border-emerald-500"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-                      <span>Device media file attached ({composerMediaUrl.startsWith('data:video') ? 'Video' : 'Image'})</span>
-                      <button type="button" onClick={() => setComposerMediaUrl('')} className="hover:text-white"><X className="w-4 h-4" /></button>
-                    </div>
-                  )}
-
-                  <input
-                    type="text"
-                    placeholder="Hashtags (comma separated: PlumberLife, Soweto)"
-                    value={composerHashtags}
-                    onChange={(e) => setComposerHashtags(e.target.value)}
-                    className="w-full bg-[#1e1e1e] text-white rounded-xl px-3 py-2 text-xs font-semibold border border-neutral-800 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              )}
-
-              {/* Hidden Native File Input for Direct Device Image/Video Uploads */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*,video/*"
-                className="hidden"
-              />
-
-              {/* Inline Selected Device File Preview (URL.createObjectURL) */}
-              {selectedFile && filePreviewUrl && (
-                <div className="relative w-fit group border-2 border-emerald-500/50 rounded-2xl overflow-hidden shadow-lg bg-black">
-                  {selectedFile.type.startsWith('video/') ? (
-                    <video src={filePreviewUrl} controls className="h-36 w-auto max-w-full object-contain" />
-                  ) : (
-                    <img src={filePreviewUrl} alt="Selected preview" className="h-32 w-auto max-w-full object-cover" />
-                  )}
-                  <div className="flex items-center justify-between gap-3 px-3 py-1.5 bg-slate-900/90 text-[11px] text-slate-300">
-                    <span className="font-mono truncate max-w-[200px]">{selectedFile.name}</span>
-                    <span className="text-emerald-400 font-bold shrink-0">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleClearSelectedFile}
-                    className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-rose-600 text-white rounded-full transition z-10 shadow-md"
-                    title="Remove file"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
-              {/* Inline Media URL Thumbnail Preview */}
-              {!selectedFile && composerMediaUrl && (
-                <div className="relative w-fit group border border-emerald-500/40 rounded-2xl overflow-hidden shadow-md bg-black">
-                  {composerMediaUrl.startsWith('data:video') || /\.(mp4|webm|mov|mkv|avi)($|\?)/i.test(composerMediaUrl) ? (
-                    <video src={composerMediaUrl} controls className="h-32 w-auto max-w-full object-contain" />
-                  ) : (
-                    <img src={composerMediaUrl} alt="Preview attachment" className="h-28 w-auto max-w-full object-cover" />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setComposerMediaUrl('')}
-                    className="absolute top-1.5 right-1.5 p-1 bg-black/80 hover:bg-black text-white rounded-full transition z-10"
-                    title="Remove media attachment"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition-all border border-emerald-500/30 cursor-pointer"
-                    title="Upload image or video from your device"
-                  >
-                    <Image className="w-4 h-4 text-emerald-400" />
-                    <span>Upload Media</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowMediaInput(!showMediaInput)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all"
-                  >
-                    <Video className="w-4 h-4 text-amber-400" />
-                    <span>Media Link</span>
-                  </button>
-                </div>
-
-                <button
-                  onClick={handlePostSubmit}
-                  disabled={(!composerText.trim() && !composerMediaUrl.trim() && !selectedFile) || isPublishing}
-                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
-                >
-                  {isPublishing ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-                      <span>Publishing...</span>
-                    </>
-                  ) : (
-                    <span>Publish Post</span>
-                  )}
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
+        {/* Dual-Purpose Global Post Composer (Showcase Work | Request a Service) */}
+        <Composer
+          currentUser={currentUser}
+          onSubmit={handleComposerSubmit}
+          isPublishing={isPublishing}
+        />
 
         {/* Posts Stream Header */}
         <div className="flex items-center justify-between px-2 text-xs">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="font-bold text-slate-300">
-              {postsSource === 'django' ? 'Live Django REST API Stream' : 'Activity Feed'}
+              Live Community Feed
             </span>
             <span className="text-[10px] text-slate-500 font-mono">
               ({(apiPosts.length > 0 ? apiPosts : posts).length} posts)
@@ -689,7 +608,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
             onClick={fetchPostsFromApi}
             disabled={isLoadingPosts}
             className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
-            title="Refresh feed from Django API"
+            title="Refresh community feed"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPosts ? 'animate-spin text-emerald-400' : ''}`} />
             <span>Refresh</span>
@@ -729,11 +648,38 @@ export const FeedView: React.FC<FeedViewProps> = ({
                     className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/30 group-hover:scale-105 transition"
                   />
                   <div>
-                    <h3 className="font-extrabold text-sm text-white leading-none group-hover:text-emerald-400 transition">{post.authorName}</h3>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="font-extrabold text-sm text-white leading-none group-hover:text-emerald-400 transition">
+                        {post.authorName}
+                      </h3>
+                      {post.authorVerified && (
+                        <span className="inline-flex items-center text-emerald-400" title="Verified Professional">
+                          <CheckCircle2 className="w-3.5 h-3.5 fill-emerald-400/20" />
+                        </span>
+                      )}
+                      {((post.authorRating && post.authorRating >= 4.5) || post.authorRating === undefined) && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-bold">
+                          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                          <span>Top Rated</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-[11px] text-neutral-400 font-medium mt-1">
                       <span>{post.createdAt}</span>
                       <span>•</span>
-                      <span>{post.authorLocation}</span>
+                      <span className="flex items-center gap-1 text-slate-300">
+                        <MapPin className="w-3 h-3 text-emerald-400/80 shrink-0" />
+                        <span>
+                          {post.authorLocation}
+                          {post.authorCountry ? `, ${post.authorCountry}` : ''}
+                        </span>
+                      </span>
+                      {post.authorPrimarySkill && (
+                        <>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="text-slate-400 hidden sm:inline font-normal">{post.authorPrimarySkill}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -967,10 +913,20 @@ export const FeedView: React.FC<FeedViewProps> = ({
                     {/* Direct Message Action */}
                     <button
                       onClick={() => onOpenDirectChat(post.authorName)}
-                      className="flex items-center gap-1.5 text-xs font-extrabold text-neutral-400 hover:text-emerald-400 transition-all"
+                      className="flex items-center gap-1.5 text-xs font-extrabold text-neutral-400 hover:text-emerald-400 transition-all cursor-pointer"
                     >
                       <Send className="w-4 h-4" />
-                      <span>Message</span>
+                      <span className="hidden sm:inline">Message</span>
+                    </button>
+
+                    {/* Commerce Action: Hire Me or Request Quote */}
+                    <button
+                      onClick={() => onOpenDirectChat(post.authorName)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                      title={post.postType === 'service_request' ? `Submit proposal to ${post.authorName}` : `Hire or request quote from ${post.authorName}`}
+                    >
+                      <Briefcase className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>{post.postType === 'service_request' ? 'Submit Proposal' : 'Hire Me / Request Quote'}</span>
                     </button>
 
                   </div>
@@ -1060,96 +1016,19 @@ export const FeedView: React.FC<FeedViewProps> = ({
 
       </div>
 
-      {/* Right Column (4 cols) - Quick Actions & Events */}
+      {/* Right Column (4 cols) - Global Marketplace Widgets */}
       <div className="lg:col-span-4 space-y-6">
-        
-        {/* Quick Actions Card */}
-        <div className="bg-[#1e1e1e] rounded-3xl p-5 border border-neutral-800 shadow-xl space-y-4">
-          <div>
-            <h3 className="font-black text-white text-lg">Quick Actions</h3>
-            <div className="w-10 h-0.5 bg-emerald-500 mt-1 rounded-full" />
-            <p className="text-xs text-neutral-400 font-medium mt-1">Manage your presence</p>
-          </div>
-
-          <div className="space-y-2.5">
-            <button
-              onClick={() => onSelectView('services')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#121212] border border-rose-500/40 hover:border-rose-500 text-rose-400 font-bold text-xs transition-all text-left"
-            >
-              <Briefcase className="w-4 h-4 text-rose-400" />
-              <span>My Services</span>
-            </button>
-
-            <button
-              onClick={() => onSelectView('profile')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#121212] border border-rose-500/40 hover:border-rose-500 text-rose-400 font-bold text-xs transition-all text-left"
-            >
-              <UserIcon className="w-4 h-4 text-rose-400" />
-              <span>My Profile</span>
-            </button>
-
-            <button
-              onClick={onOpenCreateEvent}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-rose-500 hover:bg-rose-400 text-white font-black text-xs transition-all shadow-md text-left"
-            >
-              <Calendar className="w-4 h-4" />
-              <span>Create Event</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Upcoming Events Card */}
-        <div className="bg-[#1e1e1e] rounded-3xl p-5 border border-neutral-800 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-black text-white text-lg">Upcoming Events</h3>
-              <div className="w-10 h-0.5 bg-emerald-500 mt-1 rounded-full" />
-            </div>
-            <button
-              onClick={() => onSelectView('feed')}
-              className="text-xs font-bold text-rose-400 hover:underline"
-            >
-              View All
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {events.map((ev) => (
-              <div
-                key={ev.id}
-                className="bg-[#121212] rounded-2xl p-4 border border-neutral-800/80 space-y-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h4 className="font-extrabold text-white text-sm">{ev.title}</h4>
-                    <p className="text-xs text-neutral-400 line-clamp-1 mt-0.5">{ev.description}</p>
-                  </div>
-                  <span className="bg-rose-500 text-white text-xs font-black px-2.5 py-1 rounded-xl shrink-0">
-                    {ev.dateBadge}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <img
-                    src={ev.hostAvatar}
-                    alt={ev.hostName}
-                    className="w-5 h-5 rounded-full object-cover"
-                  />
-                  <span className="text-xs text-neutral-300 font-semibold">{ev.hostName}</span>
-                </div>
-
-                <button
-                  onClick={() => onSelectEvent ? onSelectEvent(ev) : alert(`Event details for ${ev.title}`)}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-rose-500/50 hover:bg-rose-500/10 text-rose-400 font-extrabold text-xs transition-all"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>View Event Details</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
+        <RightWidgets
+          currentUser={currentUser}
+          isAuthenticated={!!isAuthenticated}
+          events={events}
+          onSelectView={onSelectView}
+          onOpenCreateEvent={onOpenCreateEvent}
+          onSelectEvent={onSelectEvent}
+          onSelectCategory={onSelectCategory}
+          onJoinAsPro={onOpenSignUp || (() => onSelectView('profile'))}
+          onHirePro={() => onSelectView('services')}
+        />
       </div>
 
       {/* Multi-Slide Fullscreen Story Viewer Modal (All stories in single viewer window) */}
@@ -1161,6 +1040,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
         onClose={() => setIsStoryViewerOpen(false)}
         onAddSlide={() => setIsCreateStoryOpen(true)}
         onDeleteSlide={onDeleteStorySlide}
+        onReactToSlide={onReactToStorySlide}
         onSelectProfile={(authorName) => {
           if (onOpenProfile) {
             onOpenProfile({ name: authorName });

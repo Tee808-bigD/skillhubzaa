@@ -18,6 +18,8 @@ from .models import (
     PolicyVersion,
     Report,
     DMCARequest,
+    ExternalCourse,
+    SavedCourse,
 )
 
 
@@ -220,10 +222,12 @@ class PolicyVersionSerializer(serializers.ModelSerializer):
 
 class UserSummarySerializer(serializers.ModelSerializer):
     """
-    Compact User summary serializer used across feeds, posts, and comments.
+    Compact User summary serializer used across feeds, reels, and profiles.
+    Includes trust badges, rating, location, and professional metadata.
     """
     full_name = serializers.SerializerMethodField()
     avatar = serializers.ImageField(required=False, allow_null=True)
+    badges = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -237,6 +241,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
             'avatar',
             'location',
             'province',
+            'country',
             'bio',
             'role',
             'skills',
@@ -244,15 +249,38 @@ class UserSummarySerializer(serializers.ModelSerializer):
             'seta_verified',
             'verified',
             'badge',
+            'badges',
+            'rating',
+            'hourly_rate',
         ]
 
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
 
+    def get_badges(self, obj):
+        badges = []
+        if getattr(obj, 'verified', False):
+            badges.append("Verified Pro")
+        if getattr(obj, 'rating', None) and float(obj.rating) >= 4.5:
+            badges.append("Top Rated")
+        if getattr(obj, 'seta_verified', False):
+            badges.append("SETA Accredited")
+        if getattr(obj, 'badge', None):
+            badges.append(obj.badge)
+        return badges
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if not data.get('avatar'):
             data['avatar'] = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'
+        # Privacy-first location: Only expose business location if explicitly approved
+        if getattr(instance, 'show_on_map', False):
+            data['business_name'] = getattr(instance, 'business_name', '')
+            data['business_latitude'] = float(instance.business_latitude) if getattr(instance, 'business_latitude', None) else None
+            data['business_longitude'] = float(instance.business_longitude) if getattr(instance, 'business_longitude', None) else None
+            data['show_on_map'] = True
+        else:
+            data['show_on_map'] = False
         return data
 
 
@@ -511,9 +539,9 @@ class ServiceSerializer(serializers.ModelSerializer):
 
 class ReelSerializer(serializers.ModelSerializer):
     """
-    Serializer for Short Video Reels.
+    Serializer for Short Video Portfolio & Skills Showcases.
     """
-    author = UserSerializer(read_only=True)
+    author = UserSummarySerializer(read_only=True)
 
     class Meta:
         model = Reel
@@ -524,6 +552,10 @@ class ReelSerializer(serializers.ModelSerializer):
             'caption',
             'audio_track',
             'tags',
+            'category',
+            'skills',
+            'is_portfolio_piece',
+            'views_count',
             'created_at',
         ]
         read_only_fields = ['id', 'author', 'created_at']
@@ -635,3 +667,165 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         for p in participants:
             room.participants.add(p)
         return room
+
+
+class ExternalCourseSerializer(serializers.ModelSerializer):
+    """
+    Serializer for external course discovery catalog items.
+    Enforces required external_url, automatic submitted_by assignment,
+    read-only moderation approval state, and dynamic is_saved bookmark state.
+    """
+    submitted_by_username = serializers.ReadOnlyField(source='submitted_by.username')
+    submitted_by_name = serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExternalCourse
+        fields = [
+            'id',
+            'title',
+            'provider_name',
+            'provider_logo_url',
+            'external_url',
+            'description',
+            'category',
+            'skill_tags',
+            'course_type',
+            'price_type',
+            'price_amount',
+            'duration',
+            'level',
+            'language',
+            'region',
+            'rating',
+            'reviews_count',
+            'enrolled_count',
+            'banner_image_url',
+            'submitted_by',
+            'submitted_by_username',
+            'submitted_by_name',
+            'is_approved',
+            'is_flagged',
+            'is_saved',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'is_approved',
+            'is_flagged',
+            'rating',
+            'reviews_count',
+            'enrolled_count',
+            'submitted_by',
+            'created_at',
+            'updated_at',
+        ]
+
+    def get_submitted_by_name(self, obj):
+        if obj.submitted_by:
+            return obj.submitted_by.get_full_name() or obj.submitted_by.username
+        return None
+
+    def get_is_saved(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return SavedCourse.objects.filter(user=request.user, course=obj).exists()
+        return False
+
+    def validate_external_url(self, value):
+        if not value or not (value.startswith('http://') or value.startswith('https://')):
+            raise serializers.ValidationError("A valid HTTP/HTTPS external enrollment URL is required.")
+        return value
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['submitted_by'] = request.user
+        validated_data['is_approved'] = False  # Always require moderator review
+        return super().create(validated_data)
+
+
+class SavedCourseSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user saved courses wishlist.
+    """
+    course = ExternalCourseSerializer(read_only=True)
+    course_id = serializers.PrimaryKeyRelatedField(
+        queryset=ExternalCourse.objects.all(),
+        source='course',
+        write_only=True
+    )
+
+    class Meta:
+        model = SavedCourse
+        fields = [
+            'id',
+            'user',
+            'course',
+            'course_id',
+            'saved_at',
+        ]
+        read_only_fields = ['id', 'user', 'saved_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        course = validated_data['course']
+        saved, _ = SavedCourse.objects.get_or_create(user=user, course=course)
+        return saved
+
+
+class MapPinSerializer(serializers.ModelSerializer):
+    """
+    Privacy-first public map pin serializer.
+    CRITICAL: Never returns user personal address, home coordinates, or province.
+    Only returns public business designated coordinates where show_on_map=True.
+    """
+    category = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+    business_latitude = serializers.FloatField()
+    business_longitude = serializers.FloatField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username',
+            'business_name',
+            'business_latitude',
+            'business_longitude',
+            'category',
+            'rating',
+            'avatar',
+        ]
+        read_only_fields = fields
+
+    def get_category(self, obj):
+        if obj.skills and len(obj.skills) > 0:
+            return obj.skills[0]
+        return getattr(obj, 'primarySkill', None) or "Services & Trades"
+
+    def get_avatar(self, obj):
+        if getattr(obj, 'avatar', None):
+            try:
+                return obj.avatar.url
+            except Exception:
+                return str(obj.avatar)
+        return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'
+
+
+class BusinessLocationUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for authenticated user updating their public business address & map toggle.
+    """
+    class Meta:
+        model = User
+        fields = [
+            'business_name',
+            'business_address',
+            'business_latitude',
+            'business_longitude',
+            'show_on_map',
+        ]
+
+

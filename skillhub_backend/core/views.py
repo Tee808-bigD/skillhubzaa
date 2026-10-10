@@ -3,9 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.views import TokenObtainPairView
+from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.http import HttpResponse
+from .filters import UserFilter, PostFilter
 
 def home_view(request):
     """
@@ -245,6 +247,8 @@ from .models import (
     Report,
     DMCARequest,
     DataBreach,
+    ExternalCourse,
+    SavedCourse,
 )
 from .serializers import (
     UserSerializer,
@@ -263,6 +267,10 @@ from .serializers import (
     ReelSerializer,
     MessageSerializer,
     ChatRoomSerializer,
+    ExternalCourseSerializer,
+    SavedCourseSerializer,
+    MapPinSerializer,
+    BusinessLocationUpdateSerializer,
 )
 import json
 from django.utils import timezone
@@ -408,14 +416,17 @@ class RegisterView(generics.CreateAPIView):
 class UserViewSet(viewsets.ModelViewSet):
     """
     API endpoint for viewing and editing users.
+    Supports filtering by category, location, rating, and hourly rate via UserFilter.
     Supports avatar uploads via /api/users/upload_avatar/ or /api/users/me/.
     """
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['username', 'first_name', 'last_name', 'skills', 'location']
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = UserFilter
+    search_fields = ['username', 'first_name', 'last_name', 'skills', 'location', 'country', 'bio']
+    ordering_fields = ['rating', 'hourly_rate', 'date_joined']
 
     @action(detail=False, methods=['get', 'put', 'patch'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
@@ -463,8 +474,10 @@ class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['content', 'category', 'author__username']
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = PostFilter
+    search_fields = ['content', 'category', 'author__username', 'hashtags']
+    ordering_fields = ['created_at', 'likes_count', 'comments_count']
 
     def get_queryset(self):
         user = self.request.user
@@ -601,14 +614,30 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
 class ReelViewSet(viewsets.ModelViewSet):
     """
-    API endpoint for short video reels with video file upload support.
+    API endpoint for short video portfolio & skills showcase reels with video upload support.
+    Supports ?category=web_dev and ?is_portfolio_piece=true filtering.
     """
     queryset = Reel.objects.select_related('author').all()
     serializer_class = ReelSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['caption', 'audio_track', 'author__username']
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['caption', 'audio_track', 'skills', 'author__username', 'author__first_name', 'author__last_name']
+    ordering_fields = ['created_at', 'views_count']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        category = self.request.query_params.get('category')
+        if category and category not in ['for_you', 'trending']:
+            qs = qs.filter(category=category.replace('-', '_'))
+        is_portfolio = self.request.query_params.get('is_portfolio_piece')
+        if is_portfolio is not None:
+            qs = qs.filter(is_portfolio_piece=(is_portfolio.lower() in ['true', '1']))
+        author_id = self.request.query_params.get('author')
+        if author_id:
+            qs = qs.filter(author_id=author_id)
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -987,4 +1016,161 @@ class LegalDocumentView(generics.GenericAPIView):
             })
 
         return Response(doc)
+
+
+class ExternalCourseViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for global external course discovery catalog.
+    - list: only returns approved courses (is_approved=True) or user's own submissions if authenticated.
+    - create: saves user submissions with is_approved=False for admin moderation.
+    - @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated]) save:
+      toggles saving course to user's SavedCourse wishlist.
+    - @action(detail=True, methods=['post']) report_link:
+      flags course link as broken or outdated.
+    """
+    serializer_class = ExternalCourseSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category', 'course_type', 'price_type', 'level', 'language', 'region']
+    search_fields = ['title', 'provider_name', 'description', 'category', 'skill_tags']
+    ordering_fields = ['rating', 'enrolled_count', 'reviews_count', 'created_at']
+    ordering = ['-enrolled_count']
+
+    def get_queryset(self):
+        user = self.request.user
+        # Staff can view all courses, authenticated users view approved + their own pending, public views approved
+        if user.is_authenticated and user.is_staff:
+            return ExternalCourse.objects.all()
+        if user.is_authenticated:
+            return ExternalCourse.objects.filter(Q(is_approved=True) | Q(submitted_by=user))
+        return ExternalCourse.objects.filter(is_approved=True)
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(
+            submitted_by=user,
+            is_approved=False  # Must be approved by moderator before public listing
+        )
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def save(self, request, pk=None):
+        """
+        Toggle bookmark / save of course in user wishlist.
+        """
+        course = self.get_object()
+        saved_record = SavedCourse.objects.filter(user=request.user, course=course).first()
+        if saved_record:
+            saved_record.delete()
+            return Response({'status': 'unsaved', 'is_saved': False}, status=status.HTTP_200_OK)
+        else:
+            SavedCourse.objects.create(user=request.user, course=course)
+            return Response({'status': 'saved', 'is_saved': True}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.AllowAny])
+    def report_link(self, request, pk=None):
+        """
+        Flag external course as broken or dead link for moderation review.
+        """
+        course = self.get_object()
+        reason = request.data.get('reason', 'Broken link reported by community')
+        course.is_flagged = True
+        course.save(update_fields=['is_flagged'])
+        return Response({
+            'status': 'flagged', 
+            'message': 'Report received. Our moderation team will verify.'
+        }, status=status.HTTP_200_OK)
+
+
+class SavedCourseViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for authenticated user's saved course wishlist.
+    """
+    serializer_class = SavedCourseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return SavedCourse.objects.filter(user=self.request.user).select_related('course')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+def geocode_address_with_geopy(address: str):
+    """
+    Helper function using geopy + OpenStreetMap Nominatim
+    to convert business_address to business_latitude and business_longitude.
+    Enforces Nominatim policy by specifying custom User-Agent.
+    """
+    if not address or not address.strip():
+        return None, None
+    try:
+        from geopy.geocoders import Nominatim
+        geolocator = Nominatim(user_agent="skillhub_app")
+        location = geolocator.geocode(address.strip(), timeout=5)
+        if location:
+            return round(location.latitude, 6), round(location.longitude, 6)
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Geopy Nominatim geocoding error: %s", exc)
+    return None, None
+
+
+class MapPinsListView(generics.ListAPIView):
+    """
+    Privacy-First OpenStreetMap Pin Directory.
+    CRITICAL: A user's personal location is NEVER shown.
+    Only users where show_on_map=True and business coordinates are populated are returned.
+    """
+    serializer_class = MapPinSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = User.objects.filter(
+            show_on_map=True,
+            business_latitude__isnull=False,
+            business_longitude__isnull=False
+        ).exclude(business_name='')
+
+        category = self.request.query_params.get('category')
+        if category and category != 'all':
+            qs = qs.filter(skills__icontains=category)
+
+        return qs
+
+
+class BusinessLocationUpdateView(generics.GenericAPIView):
+    """
+    Endpoint for authenticated user to update their public business location and toggle.
+    Converts business_address to coordinates automatically via Nominatim geopy helper if coordinates omitted.
+    """
+    serializer_class = BusinessLocationUpdateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    def put(self, request, *args, **kwargs):
+        user = request.user
+        data = request.data.copy()
+
+        # If address was provided but coordinates not explicitly set, run geopy
+        address = data.get('business_address', '')
+        if address and (not data.get('business_latitude') or not data.get('business_longitude')):
+            lat, lng = geocode_address_with_geopy(address)
+            if lat and lng:
+                data['business_latitude'] = lat
+                data['business_longitude'] = lng
+
+        serializer = self.get_serializer(user, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({
+            'status': 'success',
+            'message': 'Business location settings updated successfully.',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    patch = put
+
+
 

@@ -49,13 +49,13 @@ export const AICareerAdvisor: React.FC<AICareerAdvisorProps> = ({ currentUser, o
           {
             phase: 'Step 1: Core Fundamentals (Months 1-2)',
             title: 'Foundational Skills & Certification',
-            description: 'Complete foundational course on SkillHub ZA and earn your SETA-recognized NQF level badge.',
+            description: 'Complete foundational course on SkillHub and earn your verified skill badge.',
             recommendedCourses: ['Full-Stack Software Development', 'Digital Marketing Basics']
           },
           {
             phase: 'Step 2: Practical Experience (Months 3-5)',
             title: 'Portfolio & Freelance Projects',
-            description: 'Build 3 real-world projects and list your services on the SkillHub ZA Youth Marketplace.',
+            description: 'Build 3 real-world projects and list your services on the SkillHub Marketplace.',
             recommendedCourses: ['Git Workflows & Cloud Hosting']
           },
           {
@@ -102,9 +102,9 @@ export const AICareerAdvisor: React.FC<AICareerAdvisorProps> = ({ currentUser, o
     } catch (err) {
       console.error(err);
       setCvResult({
-        professionalSummary: `Dedicated and results-oriented ${cvTargetRole} based in ${location}. Completed verified skills development training on SkillHub ZA with a strong background in ${skillsArray.join(', ')}. Driven to contribute to dynamic South African technology teams.`,
+        professionalSummary: `Dedicated and results-oriented ${cvTargetRole} based in ${location}. Completed verified skills development training on SkillHub with a strong background in ${skillsArray.join(', ')}. Driven to contribute to dynamic technology teams.`,
         keySkillsFormatted: skillsArray.map(s => `• ${s}`),
-        suggestedCoverLetter: `Dear Hiring Committee,\n\nI am writing to express my enthusiastic application for the ${cvTargetRole} opportunity. Having completed coursework and practical portfolio projects through SkillHub ZA, I am equipped with relevant competencies aligned with SETA standards.\n\nI look forward to discussing how my dedication and skills can contribute to your goals.\n\nSincerely,\n${cvName}`
+        suggestedCoverLetter: `Dear Hiring Committee,\n\nI am writing to express my enthusiastic application for the ${cvTargetRole} opportunity. Having completed coursework and practical portfolio projects through SkillHub, I am equipped with relevant competencies aligned with industry standards.\n\nI look forward to discussing how my dedication and skills can contribute to your goals.\n\nSincerely,\n${cvName}`
       });
     } finally {
       setLoadingCv(false);
@@ -132,7 +132,7 @@ export const AICareerAdvisor: React.FC<AICareerAdvisorProps> = ({ currentUser, o
               <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
               <span>Gemini 3.8 Flash AI Engine</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white">SkillHub ZA AI Career & CV Assistant</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-white">SkillHub AI Career & CV Assistant</h1>
             <p className="text-xs text-slate-300 font-medium max-w-xl mt-1">
               Build personalized South African learning pathways, generate SETA-aligned CVs, and optimize your application profiles for top learnerships.
             </p>

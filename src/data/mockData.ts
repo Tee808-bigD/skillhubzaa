@@ -1,20 +1,33 @@
-import { Course, Learnership, YouthService, Mentor, User, Notification, LearningResource, SocialPost, Story, Reel, CommunityEvent, ChatConversation } from '../types';
+import { Course, Learnership, YouthService, Mentor, User, Notification, LearningResource, SocialPost, Story, Reel, CommunityEvent, ChatConversation, Review, PortfolioItem, ProfessionalServiceItem } from '../types';
 
 export const currentUser: User = {
   id: 'usr_thando_808',
   name: 'Thando Mzobe',
   handle: '@thando_dev',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-  bio: 'Full-stack software developer & youth tech mentor in Soweto. Passionate about sharing skills with creators worldwide.',
-  location: 'Soweto, Johannesburg',
+  bio: 'Full-stack software developer & cloud systems engineer. Building modern web platforms, APIs, and scalable distributed applications for global clients.',
+  location: 'Johannesburg, South Africa',
+  country: 'South Africa',
+  city: 'Johannesburg',
+  flagEmoji: '🇿🇦',
   province: 'Gauteng',
   verified: true,
   setaVerified: true,
+  rating: 4.95,
+  reviewsCount: 38,
+  isTopRated: true,
+  primarySkill: 'Full-Stack Software Development',
+  title: 'Lead Full-Stack Engineer & Cloud Architect',
+  hourlyRate: '$65/hr',
+  jobsCompleted: 34,
+  yearsOfExperience: '5+ years',
+  responseTime: '< 1 hour',
+  availability: 'Available Now',
   role: 'youth',
-  skills: ['React', 'TypeScript', 'Node.js', 'Python', 'UI/UX Design', 'SETA NQF5'],
+  skills: ['React', 'TypeScript', 'Node.js', 'Python', 'PostgreSQL', 'Docker', 'UI/UX Design', 'SETA NQF5'],
   educationLevel: 'Diploma in IT Systems Development',
   matricYear: 2022,
-  badge: 'Top SkillHub Contributor 🌐',
+  badge: 'Top Rated Professional 🌐',
   enrolledCourseIds: ['crs_1', 'crs_3'],
   savedLearnershipIds: ['learn_1', 'learn_3'],
   savedServiceIds: ['serv_1'],
@@ -22,6 +35,139 @@ export const currentUser: User = {
   certificatesCount: 3,
   phone: '+27 72 345 6789'
 };
+
+export const initialReviews: Review[] = [
+  {
+    id: 'rev_1',
+    reviewerId: 'usr_elena',
+    reviewerName: 'Elena Rostova',
+    reviewerAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80',
+    reviewerCountry: 'Germany 🇩🇪',
+    reviewerRole: 'Design Director at FinStudio',
+    revieweeId: 'usr_thando_808',
+    rating: 5.0,
+    comment: 'Thando was fantastic! Delivered the project ahead of schedule and communicated perfectly. His React & TypeScript architecture is clean, maintainable, and robust.',
+    createdAt: '3 days ago',
+    projectTitle: 'Fintech Dashboard Web Application'
+  },
+  {
+    id: 'rev_2',
+    reviewerId: 'usr_sarah',
+    reviewerName: 'Sarah Chen',
+    reviewerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
+    reviewerCountry: 'United Kingdom 🇬🇧',
+    reviewerRole: 'Engineering Manager',
+    revieweeId: 'usr_thando_808',
+    rating: 5.0,
+    comment: 'Exceptional engineer. We hired Thando to build a real-time event streaming pipeline and REST API. Clear documentation, tests included, and zero downtime.',
+    createdAt: '2 weeks ago',
+    projectTitle: 'Distributed REST API & WebSocket Engine'
+  },
+  {
+    id: 'rev_3',
+    reviewerId: 'usr_michael',
+    reviewerName: 'Michael Botha',
+    reviewerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+    reviewerCountry: 'Canada 🇨🇦',
+    reviewerRole: 'Founder, Cleantech Solutions',
+    revieweeId: 'usr_thando_808',
+    rating: 4.9,
+    comment: 'Top-tier problem solver. Thando integrated our IoT telemetry pipeline smoothly into our user dashboard. Highly recommended for any serious web product.',
+    createdAt: '1 month ago',
+    projectTitle: 'Solar Telemetry Telematics Dashboard'
+  }
+];
+
+export const initialPortfolioItems: PortfolioItem[] = [
+  {
+    id: 'port_1',
+    userId: 'usr_thando_808',
+    title: 'Fintech Analytics Platform',
+    description: 'A global multi-currency payment analytics dashboard with high-frequency charting, automated reconciliation, and dark-mode UI.',
+    mediaUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
+    mediaType: 'image',
+    client: 'FinStudio London',
+    category: 'Web Development',
+    skills: ['React', 'TypeScript', 'Tailwind CSS', 'PostgreSQL'],
+    liveUrl: 'https://example.com/demo/fintech',
+    createdAt: 'August 2026'
+  },
+  {
+    id: 'port_2',
+    userId: 'usr_thando_808',
+    title: 'Smart Energy & Solar Grid Hub',
+    description: 'Real-time telemetry monitoring for commercial solar installations with battery degradation prediction and automated load balancing.',
+    mediaUrl: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?w=800&auto=format&fit=crop&q=80',
+    mediaType: 'image',
+    client: 'EcoGrid Dynamics',
+    category: 'Cloud Architecture',
+    skills: ['Node.js', 'Python', 'Docker', 'React'],
+    liveUrl: 'https://example.com/demo/ecogrid',
+    createdAt: 'July 2026'
+  },
+  {
+    id: 'port_3',
+    userId: 'usr_thando_808',
+    title: 'B2B Professional Services Marketplace',
+    description: 'High-conversion escrow platform featuring milestone escrow funding, verified identity checks, and real-time messaging.',
+    mediaUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80',
+    mediaType: 'image',
+    client: 'SkillHub Global',
+    category: 'Full-Stack Engineering',
+    skills: ['React', 'TypeScript', 'UI/UX Design', 'PostgreSQL'],
+    liveUrl: 'https://example.com/demo/marketplace',
+    createdAt: 'June 2026'
+  }
+];
+
+export const initialProfessionalServices: ProfessionalServiceItem[] = [
+  {
+    id: 'serv_pro_1',
+    userId: 'usr_thando_808',
+    title: 'Full-Stack Web Application Development',
+    description: 'End-to-end production web app development with React, TypeScript, scalable Node/Python backend, database schema, and test suite.',
+    price: '$750',
+    deliveryDays: '7 days',
+    features: [
+      'Responsive React + TypeScript front-end',
+      'REST or GraphQL API endpoints',
+      'PostgreSQL / database setup & migrations',
+      'Authentication & role-based access control',
+      'Escrow milestone delivery'
+    ],
+    category: 'Web Development'
+  },
+  {
+    id: 'serv_pro_2',
+    userId: 'usr_thando_808',
+    title: 'Cloud Infrastructure & API Performance Tuning',
+    description: 'Audit, optimize, and deploy backend microservices with containerization, caching, and CI/CD pipelines.',
+    price: '$450',
+    deliveryDays: '4 days',
+    features: [
+      'Docker containerization & deployment',
+      'Database query & index optimization',
+      'Security audit & rate-limiting setup',
+      'Live monitoring & error telemetry'
+    ],
+    category: 'DevOps & Cloud'
+  },
+  {
+    id: 'serv_pro_3',
+    userId: 'usr_thando_808',
+    title: 'UI/UX Design System & Interactive Prototypes',
+    description: 'Clean, accessible design tokens and component libraries built for high conversion rates and cross-device consistency.',
+    price: '$350',
+    deliveryDays: '3 days',
+    features: [
+      'Complete Figma design component library',
+      'Tailwind CSS tokens & implementation',
+      'Interactive click-through prototype',
+      'Accessibility (WCAG AA) compliance'
+    ],
+    category: 'Design & UI'
+  }
+];
 
 export const initialCourses: Course[] = [
   {
@@ -584,76 +730,122 @@ export const initialLearningResources: LearningResource[] = [
 
 export const initialSocialPosts: SocialPost[] = [
   {
+    id: 'post_sr_1',
+    authorId: 'usr_marcus',
+    authorName: 'Marcus Sterling',
+    authorHandle: '@marcus_venture',
+    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
+    authorLocation: 'San Francisco',
+    authorCountry: 'United States 🇺🇸',
+    authorRating: 4.98,
+    authorVerified: true,
+    authorPrimarySkill: 'Tech Founder & Product Lead',
+    createdAt: '1h ago',
+    content: 'Looking for a Senior React + TypeScript & Tailwind CSS Engineer to build an analytics dashboard and integrate REST APIs. Milestone escrow funded, clear wireframes provided. Need delivery within 2 weeks.',
+    hashtags: ['React', 'TypeScript', 'RemoteHiring', 'WebDevelopment'],
+    likesCount: 18,
+    commentsCount: 6,
+    sharesCount: 4,
+    isLiked: false,
+    category: 'tech',
+    postType: 'service_request',
+    serviceRequest: {
+      budget: '$1,200 - $1,800 USD',
+      deadline: '2 Weeks',
+      preferredRegion: 'Worldwide / Remote'
+    }
+  },
+  {
     id: 'post_1',
-    authorId: 'usr_sarah',
-    authorName: 'Sarah Molefe',
-    authorHandle: '@sarah_plumb',
-    authorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-    authorLocation: 'Soweto, Johannesburg',
-    createdAt: 'Aug 19',
-    content: 'Emergency leak fixed in record time! Always ready to help when you need it most. 🚀 #PlumberLife #TradesMaster #SowetoPlumbing',
-    hashtags: ['PlumberLife', 'TradesMaster', 'SowetoPlumbing'],
+    authorId: 'usr_elena',
+    authorName: 'Elena Rostova',
+    authorHandle: '@elena_design_de',
+    authorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80',
+    authorLocation: 'Berlin',
+    authorCountry: 'Germany 🇩🇪',
+    authorRating: 5.0,
+    authorVerified: true,
+    authorPrimarySkill: 'Top Rated Graphic & Brand Designer',
+    createdAt: 'Just now',
+    content: 'Just finished a brand identity package for a fintech startup in London. Loved working on this modern logo! 🎨 #Branding #Figma #Fintech #DesignSystems',
+    hashtags: ['Branding', 'Figma', 'Fintech', 'DesignSystems'],
     mediaType: 'image',
-    mediaUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80',
-    likesCount: 12,
-    commentsCount: 2,
-    sharesCount: 1,
-    isLiked: true,
-    category: 'trades'
+    mediaUrl: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&auto=format&fit=crop&q=80',
+    likesCount: 94,
+    commentsCount: 16,
+    sharesCount: 11,
+    isLiked: false,
+    category: 'design',
+    postType: 'showcase'
   },
   {
     id: 'post_2',
-    authorId: 'usr_michael',
-    authorName: 'Michael Botha',
-    authorHandle: '@michael_carpentry',
-    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-    authorLocation: 'Cape Town, Western Cape',
-    createdAt: 'Aug 18',
-    content: 'Just completed a custom dining table from reclaimed oak. Each piece tells a story. 🌳 #Carpentry #Woodworking #Craftsmanship',
-    hashtags: ['Carpentry', 'Woodworking', 'Craftsmanship'],
+    authorId: 'usr_sarah',
+    authorName: 'Sarah Chen',
+    authorHandle: '@sarah_plumbing_uk',
+    authorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
+    authorLocation: 'London',
+    authorCountry: 'United Kingdom 🇬🇧',
+    authorRating: 4.98,
+    authorVerified: true,
+    authorPrimarySkill: 'Master Hydraulic & Solar Plumbing',
+    createdAt: 'Aug 19',
+    content: 'Emergency high-pressure heating manifold installed for a commercial studio in Shoreditch! Tested to 6 bar. Always on call for international contracts and local consults. 🚀 #PlumberLife #TradesMaster #CommercialPlumbing',
+    hashtags: ['PlumberLife', 'TradesMaster', 'CommercialPlumbing'],
     mediaType: 'image',
-    mediaUrl: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=800&auto=format&fit=crop&q=80',
-    likesCount: 24,
-    commentsCount: 4,
-    sharesCount: 3,
-    isLiked: false,
-    category: 'trades'
+    mediaUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80',
+    likesCount: 38,
+    commentsCount: 8,
+    sharesCount: 5,
+    isLiked: true,
+    category: 'trades',
+    postType: 'showcase'
   },
   {
     id: 'post_3',
-    authorId: 'usr_lisa',
-    authorName: 'Lisa Khumalo',
-    authorHandle: '@lisa_smarttech',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-    authorLocation: 'Durban, KwaZulu-Natal',
-    createdAt: 'Aug 17',
-    content: 'Smart home installation complete! Voice-controlled lighting, security, and climate. The future is here! 🏠🤖 #SmartHome #IoT #Electrical',
-    hashtags: ['SmartHome', 'IoT', 'Electrical'],
+    authorId: 'usr_michael',
+    authorName: 'Michael Botha',
+    authorHandle: '@michael_carpentry_ca',
+    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+    authorLocation: 'Toronto',
+    authorCountry: 'Canada 🇨🇦',
+    authorRating: 4.95,
+    authorVerified: true,
+    authorPrimarySkill: 'Bespoke Architectural Woodworking',
+    createdAt: 'Aug 18',
+    content: 'Just completed this custom 12-seater conference table handcrafted from reclaimed Canadian white oak. Finished with non-toxic satin hardwax oil. Available for custom orders worldwide. 🌳 #Carpentry #Woodworking #Craftsmanship',
+    hashtags: ['Carpentry', 'Woodworking', 'Craftsmanship'],
     mediaType: 'image',
-    mediaUrl: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=800&auto=format&fit=crop&q=80',
-    likesCount: 15,
-    commentsCount: 3,
-    sharesCount: 2,
+    mediaUrl: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=800&auto=format&fit=crop&q=80',
+    likesCount: 54,
+    commentsCount: 12,
+    sharesCount: 9,
     isLiked: false,
-    category: 'renewable'
+    category: 'trades',
+    postType: 'showcase'
   },
   {
     id: 'post_4',
-    authorId: 'usr_themba',
-    authorName: 'Themba Ndlovu',
-    authorHandle: '@themba_solar',
+    authorId: 'usr_david',
+    authorName: 'David Kim',
+    authorHandle: '@david_cloud_ny',
     authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
-    authorLocation: 'Pretoria, Gauteng',
+    authorLocation: 'New York',
+    authorCountry: 'United States 🇺🇸',
+    authorRating: 4.92,
+    authorVerified: true,
+    authorPrimarySkill: 'Cloud & AI Infrastructure Engineer',
     createdAt: 'Aug 16',
-    content: '10kW Off-grid solar installation done for a township bakery! Uninterrupted power for bread making every single day. ☀️⚡ #SolarPower #GreenEnergy',
-    hashtags: ['SolarPower', 'GreenEnergy', 'CleanEnergy'],
+    content: 'Deploys 99.99% high-availability microservices cluster on Kubernetes with auto-healing and zero downtime rolling releases. Open for consulting contracts. ☁️⚡ #Kubernetes #CloudArch #DevOps',
+    hashtags: ['Kubernetes', 'CloudArch', 'DevOps'],
     mediaType: 'image',
-    mediaUrl: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?w=800&auto=format&fit=crop&q=80',
-    likesCount: 38,
-    commentsCount: 7,
-    sharesCount: 5,
+    mediaUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&auto=format&fit=crop&q=80',
+    likesCount: 67,
+    commentsCount: 9,
+    sharesCount: 7,
     isLiked: true,
-    category: 'renewable'
+    category: 'tech',
+    postType: 'showcase'
   }
 ];
 
@@ -670,13 +862,22 @@ export const initialStories: Story[] = [
         id: 'slide_me_1',
         mediaUrl: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80',
         createdAt: 'Just now',
-        caption: 'Working late on the community platform update! 💻⚡'
+        caption: 'Working late on the community platform update! 💻⚡',
+        reactions: [
+          { id: 'r_me_1', emoji: '🔥', userId: 'usr_sarah', userName: 'Sarah Molefe', userAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80', createdAt: '10m ago' },
+          { id: 'r_me_2', emoji: '👏', userId: 'usr_michael', userName: 'Michael Botha', userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80', createdAt: '5m ago' },
+          { id: 'r_me_3', emoji: '🚀', userId: 'usr_elena', userName: 'Elena Rostova', userAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80', createdAt: '2m ago' }
+        ]
       },
       {
         id: 'slide_me_2',
         mediaUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&auto=format&fit=crop&q=80',
         createdAt: '1h ago',
-        caption: 'Planning the youth mentorship session for tomorrow! 🤝'
+        caption: 'Planning the youth mentorship session for tomorrow! 🤝',
+        reactions: [
+          { id: 'r_me_4', emoji: '❤️', userId: 'usr_lisa', userName: 'Lisa Khumalo', userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80', createdAt: '45m ago' },
+          { id: 'r_me_5', emoji: '🎉', userId: 'usr_david', userName: 'David Kim', userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80', createdAt: '30m ago' }
+        ]
       }
     ]
   },
@@ -692,13 +893,22 @@ export const initialStories: Story[] = [
         id: 'slide_sarah_1',
         mediaUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80',
         createdAt: '2h ago',
-        caption: 'Inspecting copper pipe fittings at the site 🛠️'
+        caption: 'Inspecting copper pipe fittings at the site 🛠️',
+        reactions: [
+          { id: 'r_s_1', emoji: '👏', userId: 'usr_thando_808', userName: 'Thando Mzobe', createdAt: '1h ago' },
+          { id: 'r_s_2', emoji: '🔥', userId: 'usr_michael', userName: 'Michael Botha', createdAt: '45m ago' },
+          { id: 'r_s_3', emoji: '💯', userId: 'usr_themba', userName: 'Themba Ndlovu', createdAt: '20m ago' }
+        ]
       },
       {
         id: 'slide_sarah_2',
         mediaUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&auto=format&fit=crop&q=80',
         createdAt: '1h ago',
-        caption: 'All set and pressure tested! Ready for inspection ✅'
+        caption: 'All set and pressure tested! Ready for inspection ✅',
+        reactions: [
+          { id: 'r_s_4', emoji: '❤️', userId: 'usr_thando_808', userName: 'Thando Mzobe', createdAt: '30m ago' },
+          { id: 'r_s_5', emoji: '🎉', userId: 'usr_elena', userName: 'Elena Rostova', createdAt: '15m ago' }
+        ]
       }
     ]
   },
@@ -714,13 +924,21 @@ export const initialStories: Story[] = [
         id: 'slide_mike_1',
         mediaUrl: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=600&auto=format&fit=crop&q=80',
         createdAt: '4h ago',
-        caption: 'Selecting raw reclaimed Kiaat timber for the dining set 🪵'
+        caption: 'Selecting raw reclaimed Kiaat timber for the dining set 🪵',
+        reactions: [
+          { id: 'r_m_1', emoji: '🔥', userId: 'usr_sarah', userName: 'Sarah Molefe', createdAt: '3h ago' },
+          { id: 'r_m_2', emoji: '👏', userId: 'usr_lisa', userName: 'Lisa Khumalo', createdAt: '2h ago' }
+        ]
       },
       {
         id: 'slide_mike_2',
         mediaUrl: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop&q=80',
         createdAt: '2h ago',
-        caption: 'Hand oiling complete! Satin shine coming through ✨'
+        caption: 'Hand oiling complete! Satin shine coming through ✨',
+        reactions: [
+          { id: 'r_m_3', emoji: '❤️', userId: 'usr_thando_808', userName: 'Thando Mzobe', createdAt: '1h ago' },
+          { id: 'r_m_4', emoji: '💯', userId: 'usr_sarah', userName: 'Sarah Molefe', createdAt: '30m ago' }
+        ]
       }
     ]
   },
@@ -761,45 +979,113 @@ export const initialStories: Story[] = [
 export const initialReels: Reel[] = [
   {
     id: 'reel_1',
-    authorName: 'Mike the Emperor',
-    authorHandle: '@mikethemperor',
-    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-    caption: 'You are a golden goose 🪙 Don\'t let anyone discount your skills or delay your goals! #Motivation #YouthDev #SkillBuilding',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-man-working-on-his-laptop-308-large.mp4',
-    likesCount: 200,
-    commentsCount: 14,
-    sharesCount: 7,
+    authorName: 'Sarah Chen',
+    authorHandle: '@sarah_chen',
+    authorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
+    authorLocation: 'London, UK 🇬🇧',
+    authorRating: 4.98,
+    authorVerified: true,
+    authorHourlyRate: '$75/hr',
+    caption: 'Just deployed a full-stack e-commerce app for a UK client. Check out the dashboard! 🚀 #React #WebDev #TypeScript',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-software-developer-working-on-code-41315-large.mp4',
+    likesCount: 428,
+    commentsCount: 38,
+    sharesCount: 54,
     isLiked: true,
-    audioTrack: 'Original Audio - Mike the Emperor',
-    tags: ['Motivation', 'YouthDev', 'Career']
+    audioTrack: 'Ambient Tech - Sarah Studio',
+    tags: ['React', 'TypeScript', 'WebDev'],
+    skills: ['React', 'TypeScript', 'Node.js', 'PostgreSQL'],
+    category: 'web_dev',
+    isPortfolioPiece: true,
+    viewsCount: 2450
   },
   {
     id: 'reel_2',
-    authorName: 'Sarah Plumbing Pro',
-    authorHandle: '@sarah_plumb',
-    authorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-    caption: 'How to replace a pressure valve in 60 seconds flat! 🔧 Save this video for your next emergency home repair.',
+    authorName: 'Elena Rostova',
+    authorHandle: '@elena_design',
+    authorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80',
+    authorLocation: 'Berlin, Germany 🇩🇪',
+    authorRating: 4.97,
+    authorVerified: true,
+    authorHourlyRate: '$70/hr',
+    caption: 'Brand identity & dark-mode design system deliverable for a London FinTech startup. Figma tokens in action! 🎨 #Branding #Figma #UIUX',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-graphic-designer-working-on-a-digital-tablet-41586-large.mp4',
+    likesCount: 615,
+    commentsCount: 49,
+    sharesCount: 88,
+    isLiked: false,
+    audioTrack: 'Minimalist Beats - Elena Design',
+    tags: ['Figma', 'UIUX', 'DesignSystems'],
+    skills: ['Figma', 'UI/UX Design', 'Design Systems', 'Branding'],
+    category: 'design',
+    isPortfolioPiece: true,
+    viewsCount: 3820
+  },
+  {
+    id: 'reel_3',
+    authorName: 'Michael Botha',
+    authorHandle: '@michael_botha',
+    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+    authorLocation: 'Toronto, Canada 🇨🇦',
+    authorRating: 4.95,
+    authorVerified: true,
+    authorHourlyRate: '$85/hr',
+    caption: 'Commissioning an 85kW commercial solar rooftop array with smart inverters and live telemetry. ☀️🔋 #SolarPV #CleanEnergy #Electrical',
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-carpenter-measuring-wood-41584-large.mp4',
     likesCount: 345,
     commentsCount: 29,
     sharesCount: 42,
     isLiked: false,
-    audioTrack: 'Trades & Hacks - Sarah Plumbing',
-    tags: ['Plumbing', 'DIY', 'Trades']
+    audioTrack: 'Trades & Innovations - Michael Botha',
+    tags: ['SolarPV', 'CleanEnergy', 'Trades'],
+    skills: ['Solar PV', 'Smart Inverters', 'Electrical', 'CAD'],
+    category: 'trades',
+    isPortfolioPiece: true,
+    viewsCount: 1940
   },
   {
-    id: 'reel_3',
-    authorName: 'Aria Chen',
-    authorHandle: '@ariachen_dev',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-    caption: '3 React 19 hooks you must start using today! Clean state, optimistic UI updates, and instant data fetching 💻⚡',
+    id: 'reel_4',
+    authorName: 'David Kim',
+    authorHandle: '@david_cloud',
+    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+    authorLocation: 'San Francisco, USA 🇺🇸',
+    authorRating: 4.92,
+    authorVerified: true,
+    authorHourlyRate: '$90/hr',
+    caption: '1-on-1 Mentorship session breakdown: System design for distributed caching, Redis clustering, and database read replicas. 💻 #Cloud #DevOps #Mentorship',
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-typing-on-a-computer-keyboard-41583-large.mp4',
+    likesCount: 289,
+    commentsCount: 22,
+    sharesCount: 31,
+    isLiked: false,
+    audioTrack: 'System Design Sessions - David Kim',
+    tags: ['Cloud', 'DevOps', 'Mentorship'],
+    skills: ['Cloud Architecture', 'AWS', 'System Design', 'Kubernetes'],
+    category: 'tutoring',
+    isPortfolioPiece: true,
+    viewsCount: 1290
+  },
+  {
+    id: 'reel_5',
+    authorName: 'Thando Mzobe',
+    authorHandle: '@thando_dev',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+    authorLocation: 'Johannesburg, South Africa 🇿🇦',
+    authorRating: 4.95,
+    authorVerified: true,
+    authorHourlyRate: '$65/hr',
+    caption: 'Live test of our real-time WebSocket event streaming pipeline! Under 15ms latency across global clusters. ⚡ #Python #FastAPI #Docker',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-man-working-on-his-laptop-308-large.mp4',
     likesCount: 512,
     commentsCount: 68,
     sharesCount: 110,
     isLiked: true,
-    audioTrack: 'Tech Vibes - Aria Code',
-    tags: ['React', 'Coding', 'WebDev']
+    audioTrack: 'Original Audio - Thando Mzobe',
+    tags: ['WebDev', 'Python', 'FastAPI'],
+    skills: ['Python', 'WebSockets', 'Docker', 'React'],
+    category: 'web_dev',
+    isPortfolioPiece: true,
+    viewsCount: 4120
   }
 ];
 

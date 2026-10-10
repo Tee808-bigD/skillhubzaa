@@ -20,7 +20,7 @@ export const ApplyLearnershipModal: React.FC<ApplyLearnershipModalProps> = ({
   const [phone, setPhone] = useState(currentUser.phone || '+27 72 345 6789');
   const [province, setProvince] = useState(currentUser.province);
   const [coverNote, setCoverNote] = useState(
-    `I am applying for the ${learnership.title} role. I have completed relevant skills training on SkillHub ZA and hold a ${currentUser.educationLevel}. I am eager to gain practical workplace experience in ${learnership.location}.`
+    `I am applying for the ${learnership.title} role. I have completed relevant skills training on SkillHub and hold a ${currentUser.educationLevel}. I am eager to gain practical workplace experience in ${learnership.location}.`
   );
   const [submitted, setSubmitted] = useState(false);
 
@@ -56,7 +56,7 @@ export const ApplyLearnershipModal: React.FC<ApplyLearnershipModalProps> = ({
             </div>
             <h3 className="font-black text-slate-900 text-lg">Application Submitted Successfully!</h3>
             <p className="text-xs text-slate-600 max-w-md mx-auto">
-              Your application has been logged for <strong className="text-slate-900">{learnership.company}</strong>. We've attached your SkillHub ZA Verified Profile and Certificate credentials.
+              Your application has been logged for <strong className="text-slate-900">{learnership.company}</strong>. We've attached your SkillHub Verified Profile and Certificate credentials.
             </p>
             <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs font-semibold text-emerald-800">
               Tracking ID: #SA-LEARN-2026-{Math.floor(1000 + Math.random() * 9000)}

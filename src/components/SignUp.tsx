@@ -396,7 +396,7 @@ export const SignUp: React.FC<SignUpProps> = ({
             {ageInfo.isUnder13 && (
               <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-[11px] flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>You must be at least 13 years old to join SkillHub ZA.</span>
+                <span>You must be at least 13 years old to join SkillHub.</span>
               </div>
             )}
             {ageInfo.isMinor && (
@@ -558,7 +558,7 @@ export const SignUp: React.FC<SignUpProps> = ({
                   className="w-4 h-4 mt-0.5 rounded bg-slate-950 border-slate-700 text-emerald-500 focus:ring-emerald-500/30"
                 />
                 <span className="text-[11px] text-slate-400 leading-tight">
-                  I consent to receive occasional learnership updates, trade tool grants, and promotional communications from SkillHub ZA (Optional).
+                  I consent to receive occasional project updates, trade tool grants, and promotional communications from SkillHub (Optional).
                 </span>
               </label>
             </div>

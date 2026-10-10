@@ -15,6 +15,8 @@ from .models import (
     DataBreach,
     Report,
     DMCARequest,
+    ExternalCourse,
+    SavedCourse,
 )
 
 
@@ -312,3 +314,77 @@ class MessageAdmin(admin.ModelAdmin):
     def text_preview(self, obj):
         return obj.content[:40] + '...' if len(obj.content) > 40 else obj.content
     text_preview.short_description = 'Message Content'
+
+
+@admin.register(ExternalCourse)
+class ExternalCourseAdmin(admin.ModelAdmin):
+    """
+    Moderation and directory governance for external courses.
+    Allows administrators to review user submissions and publish them publicly.
+    """
+    list_display = (
+        'title',
+        'provider_name',
+        'category',
+        'course_type',
+        'price_type',
+        'price_amount',
+        'is_approved',
+        'is_flagged',
+        'submitted_by',
+        'created_at'
+    )
+    list_filter = (
+        'is_approved',
+        'category',
+        'provider_name',
+        'submitted_by',
+        'is_flagged',
+        'course_type',
+        'price_type',
+        'level',
+        'region'
+    )
+    search_fields = ('title', 'provider_name', 'description', 'category')
+    list_editable = ('is_approved', 'is_flagged')
+    readonly_fields = ('created_at', 'updated_at')
+    actions = ['approve_selected_courses', 'unapprove_selected_courses', 'flag_broken_links']
+
+    @admin.action(description="Approve Selected Courses for Public Discovery")
+    def approve_selected_courses(self, request, queryset):
+        """
+        Custom admin action: Flips is_approved=True so courses appear publicly.
+        """
+        updated_count = queryset.update(is_approved=True)
+        self.message_user(
+            request, 
+            f"Successfully approved {updated_count} course(s). They are now visible in the discovery catalog."
+        )
+
+    @admin.action(description="Unapprove / Revert to Pending Review")
+    def unapprove_selected_courses(self, request, queryset):
+        updated_count = queryset.update(is_approved=False)
+        self.message_user(
+            request, 
+            f"Reverted {updated_count} course(s) to pending review."
+        )
+
+    @admin.action(description="Mark Selected Courses as Broken / Flagged")
+    def flag_broken_links(self, request, queryset):
+        updated_count = queryset.update(is_flagged=True)
+        self.message_user(
+            request, 
+            f"Flagged {updated_count} course(s) for dead-link inspection."
+        )
+
+
+@admin.register(SavedCourse)
+class SavedCourseAdmin(admin.ModelAdmin):
+    """
+    Wishlist bookmark records for external courses.
+    """
+    list_display = ('id', 'user', 'course', 'saved_at')
+    list_filter = ('saved_at',)
+    search_fields = ('user__username', 'course__title', 'course__provider_name')
+    raw_id_fields = ('user', 'course')
+

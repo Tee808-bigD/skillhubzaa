@@ -25,7 +25,8 @@ import {
   Menu,
   ShieldCheck,
   HelpCircle,
-  FileText
+  FileText,
+  Bookmark
 } from 'lucide-react';
 
 interface SocialSidebarProps {
@@ -85,7 +86,7 @@ export const SocialSidebar: React.FC<SocialSidebarProps> = ({
     },
     { id: 'create', label: 'Create', icon: PlusCircle, isAction: true },
     { id: 'services' as MainView, label: 'Services', icon: Briefcase },
-    { id: 'courses' as MainView, label: 'Courses & SETA', icon: GraduationCap },
+    { id: 'courses' as MainView, label: 'Course Discovery', icon: GraduationCap },
     { id: 'resources' as MainView, label: 'Learning Hub', icon: BookOpen },
     { id: 'ai_advisor' as MainView, label: 'AI Advisor', icon: Sparkles },
   ];
@@ -222,6 +223,17 @@ export const SocialSidebar: React.FC<SocialSidebarProps> = ({
                 >
                   <UserIcon className="w-4 h-4 text-emerald-400" />
                   <span>Profile & Certificates</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onSelectView('saved_courses');
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-neutral-800 text-left transition-colors"
+                >
+                  <Bookmark className="w-4 h-4 text-amber-400" />
+                  <span>Saved Courses Wishlist</span>
                 </button>
 
                 {onOpenDjangoBackend && (

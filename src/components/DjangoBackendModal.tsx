@@ -126,6 +126,18 @@ export const DjangoBackendModal: React.FC<DjangoBackendModalProps> = ({ isOpen, 
       extends: 'models.Model',
       description: 'Short vertical video showcase for artisans and digital creators.',
       fields: ['author (ForeignKey User)', 'video_url (URLField)', 'caption (TextField)', 'audio_track (CharField)', 'tags (JSONField)']
+    },
+    {
+      name: 'ExternalCourse',
+      extends: 'models.Model',
+      description: 'Global course & bootcamp discovery catalog with moderation approval (is_approved) and external link redirection.',
+      fields: ['title (CharField)', 'provider_name (CharField)', 'external_url (URLField)', 'course_type (Choices)', 'price_type (Choices)', 'is_approved (BooleanField)', 'is_flagged (BooleanField)', 'submitted_by (ForeignKey User)']
+    },
+    {
+      name: 'SavedCourse',
+      extends: 'models.Model',
+      description: 'User wishlist bookmarks for discovery courses with unique_together constraint.',
+      fields: ['user (ForeignKey User)', 'course (ForeignKey ExternalCourse)', 'saved_at (DateTimeField)', 'unique_together: [user, course]']
     }
   ];
 
@@ -751,6 +763,8 @@ urlpatterns = [
                     <option value="/api/events">/api/events/ (Community Events)</option>
                     <option value="/api/events/evt_1/rsvp">/api/events/evt_1/rsvp/ (Toggle Event RSVP)</option>
                     <option value="/api/services">/api/services/ (Freelance Service Listings)</option>
+                    <option value="/api/courses">/api/courses/ (List Approved Courses Discovery)</option>
+                    <option value="/api/courses/ext_crs_1/save">/api/courses/ext_crs_1/save (POST: Toggle Saved Course Bookmark)</option>
                     <option value="/api/django/summary">/api/django/summary (Django Architecture Spec)</option>
                   </select>
 

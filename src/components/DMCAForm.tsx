@@ -83,7 +83,7 @@ export const DMCAForm: React.FC<DMCAFormProps> = ({ onBack }) => {
           </div>
         </div>
         <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-          SkillHub ZA complies with the Electronic Communications and Transactions Act No. 25 of 2002 (ECTA) and the Digital Millennium Copyright Act (DMCA). If you believe your copyrighted artisanal media, photography, course material, or code is being infringed upon, please complete this formal notice.
+          SkillHub complies with international copyright frameworks and the Digital Millennium Copyright Act (DMCA). If you believe your copyrighted artisanal media, photography, design material, or code is being infringed upon, please complete this formal notice.
         </p>
       </div>
 

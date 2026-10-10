@@ -12,9 +12,11 @@ import {
   SocialPost,
   Story,
   StorySlide,
+  StorySlideReaction,
   Reel,
   CommunityEvent,
-  ChatConversation
+  ChatConversation,
+  ExternalCourse
 } from './types';
 import { 
   currentUser as defaultUser, 
@@ -30,6 +32,7 @@ import {
   initialEvents,
   initialChatConversations
 } from './data/mockData';
+import { initialExternalCourses } from './data/mockExternalCourses';
 
 import { SocialSidebar } from './components/SocialSidebar';
 import { FeedView } from './components/FeedView';
@@ -44,6 +47,8 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 
 import { Header } from './components/Header';
 import { HeroBanner } from './components/HeroBanner';
+import { CoursesView } from './components/CoursesView';
+import { SavedCoursesView } from './components/SavedCoursesView';
 import { CourseCard } from './components/CourseCard';
 import { CourseDetailModal } from './components/CourseDetailModal';
 import { LearnershipCard } from './components/LearnershipCard';
@@ -58,6 +63,7 @@ import { NotificationsView } from './components/NotificationsView';
 import { LearningResourcesView } from './components/LearningResourcesView';
 import { AddResourceModal } from './components/AddResourceModal';
 import { DjangoBackendModal } from './components/DjangoBackendModal';
+import { SearchResultsPage } from './pages/SearchResultsPage';
 import { Login } from './components/Login';
 import { SignUp } from './components/SignUp';
 import { DMCAForm } from './components/DMCAForm';
@@ -103,8 +109,14 @@ const normalizeStoriesList = (list: Story[], userName: string, userAvatar: strin
 
       const combined: StorySlide[] = [...existingSlides];
       for (const slide of incomingSlides) {
-        if (!combined.some(cs => (cs.id && cs.id === slide.id) || (cs.mediaUrl && cs.mediaUrl === slide.mediaUrl))) {
+        const existingIdx = combined.findIndex(cs => (cs.id && cs.id === slide.id) || (cs.mediaUrl && cs.mediaUrl === slide.mediaUrl));
+        if (existingIdx === -1) {
           combined.push(slide);
+        } else {
+          // If incoming slide has reactions and existing doesn't, copy over reactions
+          if (slide.reactions && (!combined[existingIdx].reactions || combined[existingIdx].reactions?.length === 0)) {
+            combined[existingIdx].reactions = slide.reactions;
+          }
         }
       }
 
@@ -136,8 +148,21 @@ const normalizeStoriesList = (list: Story[], userName: string, userAvatar: strin
 };
 
 function AppContent() {
-  // Navigation State (default to social media feed)
-  const [currentView, setCurrentView] = useState<MainView>('feed');
+  // Navigation State (default to social media feed or search based on URL)
+  const [currentView, setCurrentView] = useState<MainView>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const search = window.location.search;
+      if (path.includes('/search') || search.includes('q=') || search.includes('category=')) {
+        return 'search';
+      }
+      if (path.includes('/reels')) {
+        return 'reels';
+      }
+    }
+    return 'feed';
+  });
+
   const [viewedProfileUser, setViewedProfileUser] = useState<User | null>(null);
   const [selectedProvince, setSelectedProvince] = useState<SouthAfricanProvince>('All South Africa');
 
@@ -150,20 +175,32 @@ function AppContent() {
         name: targetUser.name || 'SkillHub Member',
         handle: targetUser.handle || `@${(targetUser.name || 'member').toLowerCase().replace(/\s+/g, '_')}`,
         avatar: targetUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-        bio: targetUser.bio || 'Active Community Member in SkillHub ZA.',
+        bio: targetUser.bio || 'Active professional developing trade and digital skills with global clients.',
         location: targetUser.location || 'South Africa',
+        country: targetUser.country,
+        city: targetUser.city,
         province: targetUser.province || 'Gauteng',
-        verified: true,
-        setaVerified: true,
+        verified: targetUser.verified ?? true,
+        setaVerified: targetUser.setaVerified ?? true,
+        rating: targetUser.rating ?? 4.95,
+        reviewsCount: targetUser.reviewsCount ?? 38,
+        isTopRated: targetUser.isTopRated ?? true,
+        primarySkill: targetUser.primarySkill || targetUser.title || 'Professional Services',
+        title: targetUser.title || targetUser.primarySkill || 'Professional Specialist',
+        hourlyRate: targetUser.hourlyRate || '$75/hr',
+        jobsCompleted: targetUser.jobsCompleted || 28,
+        yearsOfExperience: targetUser.yearsOfExperience || '5+ years',
+        responseTime: targetUser.responseTime || '< 1 hour',
+        availability: targetUser.availability || 'Available Now',
         role: targetUser.role || 'youth',
-        skills: targetUser.skills || ['Trades & Skills', 'Youth Mentorship'],
+        skills: targetUser.skills && targetUser.skills.length > 0 ? targetUser.skills : ['Trades & Skills', 'Engineering', 'UI/UX Design'],
         educationLevel: targetUser.educationLevel || 'Matric / Diploma',
         enrolledCourseIds: [],
         savedLearnershipIds: [],
         savedServiceIds: [],
         savedResourceIds: [],
-        certificatesCount: 2,
-        badge: targetUser.badge || 'Verified Member'
+        certificatesCount: 3,
+        badge: targetUser.badge || 'Verified Pro'
       };
       setViewedProfileUser(fullUser);
     }
@@ -205,7 +242,14 @@ function AppContent() {
   const [reels, setReels] = useState<Reel[]>(() => {
     const saved = localStorage.getItem('skillhub_reels');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
     }
     return initialReels;
   });
@@ -232,6 +276,29 @@ function AppContent() {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
     return initialCourses;
+  });
+
+  const [externalCourses, setExternalCourses] = useState<ExternalCourse[]>(() => {
+    const saved = localStorage.getItem('skillhub_external_courses');
+    if (saved) {
+      try { 
+        const parsed: ExternalCourse[] = JSON.parse(saved);
+        const existingIds = new Set(parsed.map(c => c.id));
+        const missing = initialExternalCourses.filter(c => !existingIds.has(c.id));
+        return [...missing, ...parsed];
+      } catch (e) { 
+        console.error(e); 
+      }
+    }
+    return initialExternalCourses;
+  });
+
+  const [savedCourseIds, setSavedCourseIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('skillhub_saved_course_ids');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return ['ext_crs_1', 'ext_crs_2'];
   });
 
   const [learnerships, setLearnerships] = useState<Learnership[]>(() => {
@@ -324,7 +391,7 @@ function AppContent() {
         name: userSummary.full_name || userSummary.username || 'SkillHub Member',
         handle: userSummary.username ? `@${userSummary.username}` : '@member',
         avatar: userSummary.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-        bio: userSummary.bio || (userSummary.role === 'mentor' ? 'Certified Mentor & Career Advisor on SkillHub ZA.' : userSummary.role === 'employer' ? 'Accredited Employer & Youth Placement Partner.' : 'Active South African youth developing trade and digital skills.'),
+        bio: userSummary.bio || (userSummary.role === 'mentor' ? 'Certified Mentor & Career Advisor on SkillHub.' : userSummary.role === 'employer' ? 'Accredited Employer & Talent Partner.' : 'Active professional developing trade and digital skills.'),
         location: userSummary.location || 'South Africa',
         province: (userSummary.province as any) || 'Gauteng',
         verified: true,
@@ -484,10 +551,23 @@ function AppContent() {
     safeSetLocalStorageItem('skillhub_reels', reels);
   }, [reels]);
 
+  useEffect(() => {
+    safeSetLocalStorageItem('skillhub_external_courses', externalCourses);
+  }, [externalCourses]);
+
+  useEffect(() => {
+    safeSetLocalStorageItem('skillhub_saved_course_ids', savedCourseIds);
+  }, [savedCourseIds]);
+
   // Social Handlers
   const handleAddReel = (newReel: Reel) => {
     setReels(prev => [newReel, ...prev]);
   };
+
+  const handleDeleteReel = (reelId: string) => {
+    setReels(prev => prev.filter(r => r.id !== reelId));
+  };
+
   const handleLikePost = (postId: string) => {
     setSocialPosts(prev => prev.map(post => {
       if (post.id === postId) {
@@ -580,6 +660,46 @@ function AppContent() {
         return story;
       }).filter((s): s is Story => s !== null);
       return updated;
+    });
+  };
+
+  const handleReactToStorySlide = (storyId: string, slideId: string, emoji: string) => {
+    setStories(prev => {
+      return prev.map(story => {
+        const isTarget = story.id === storyId ||
+          (storyId === 'story_me' && (story.authorName === 'Your Story' || story.authorName.toLowerCase() === user.name.toLowerCase()));
+
+        if (isTarget) {
+          const currentSlides = story.slides && story.slides.length > 0
+            ? story.slides
+            : [{ id: story.id, mediaUrl: story.mediaUrl, createdAt: story.createdAt }];
+
+          const updatedSlides = currentSlides.map(slide => {
+            if (slide.id === slideId || (!slide.id && slide.mediaUrl === story.mediaUrl)) {
+              const currentReactions = slide.reactions || [];
+              const newReaction: StorySlideReaction = {
+                id: `react_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                emoji,
+                userId: user.id,
+                userName: user.name,
+                userAvatar: user.avatar,
+                createdAt: 'Just now'
+              };
+              return {
+                ...slide,
+                reactions: [...currentReactions, newReaction]
+              };
+            }
+            return slide;
+          });
+
+          return {
+            ...story,
+            slides: updatedSlides
+          };
+        }
+        return story;
+      });
     });
   };
 
@@ -699,6 +819,51 @@ function AppContent() {
       read: false
     };
     setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  const handleToggleSaveCourse = (courseId: string) => {
+    setSavedCourseIds(prev => 
+      prev.includes(courseId) ? prev.filter(id => id !== courseId) : [...prev, courseId]
+    );
+  };
+
+  const handleAddExternalCourse = (newCourseData: Partial<ExternalCourse>) => {
+    const newCourse: ExternalCourse = {
+      id: `ext_crs_${Date.now()}`,
+      title: newCourseData.title || 'Untitled Course',
+      provider_name: newCourseData.provider_name || 'Independent Provider',
+      provider_logo_url: newCourseData.provider_logo_url || '',
+      external_url: newCourseData.external_url || '#',
+      description: newCourseData.description || '',
+      category: newCourseData.category || 'Coding',
+      skill_tags: newCourseData.skill_tags || ['General'],
+      course_type: newCourseData.course_type || 'course',
+      price_type: newCourseData.price_type || 'free',
+      price_amount: newCourseData.price_amount,
+      duration: newCourseData.duration || 'Flexible',
+      level: newCourseData.level || 'beginner',
+      language: newCourseData.language || 'English',
+      region: newCourseData.region || 'Global',
+      rating: 5.0,
+      reviews_count: 1,
+      enrolled_count: 1,
+      submitted_by: user.id,
+      submitted_by_name: user.name,
+      is_approved: false,
+      banner_image_url: newCourseData.banner_image_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+      created_at: new Date().toISOString(),
+    };
+    setExternalCourses(prev => [newCourse, ...prev]);
+
+    const notif: Notification = {
+      id: `notif_${Date.now()}`,
+      type: 'course',
+      title: 'Course Submitted for Review',
+      message: `"${newCourse.title}" was submitted to the discovery catalog and is awaiting moderator verification.`,
+      timestamp: 'Just now',
+      read: false
+    };
+    setNotifications(prev => [notif, ...prev]);
   };
 
   const handleToggleBookmarkLearnership = (learnershipId: string) => {
@@ -849,6 +1014,7 @@ function AppContent() {
               onAddPost={handleAddSocialPost}
               onAddStory={handleAddStory}
               onDeleteStorySlide={handleDeleteStorySlide}
+              onReactToStorySlide={handleReactToStorySlide}
               onToggleBookmarkPost={handleToggleBookmarkPost}
               onDeletePost={handleDeletePost}
               onOpenDirectChat={handleOpenDirectChat}
@@ -860,7 +1026,42 @@ function AppContent() {
             />
           )}
 
-          {/* Reels View */}
+          {/* Search & Discovery Results Page */}
+          {currentView === 'search' && (
+            <SearchResultsPage
+              initialQuery={searchQuery}
+              initialCategory={selectedCategory === 'all' ? '' : selectedCategory}
+              initialLocation={selectedProvince === 'All South Africa' ? 'all' : selectedProvince}
+              onOpenProfile={handleOpenUserProfile}
+              onOpenDirectChat={handleOpenDirectChat}
+              onHirePro={(item) => {
+                if (item && item.price) {
+                  const numeric = parseInt(String(item.price).replace(/[^0-9]/g, ''), 10) || 500;
+                  setEscrowServiceModal({
+                    id: item.id || `serv_${Date.now()}`,
+                    title: item.title,
+                    providerName: 'SkillHub Verified Pro',
+                    providerId: item.userId || 'usr_pro',
+                    providerProvince: 'Gauteng',
+                    category: 'digital',
+                    priceZar: numeric,
+                    priceUnit: 'project milestone',
+                    description: item.description || ''
+                  } as any);
+                } else if (item && item.name) {
+                  handleOpenDirectChat(item.name);
+                }
+              }}
+              onNavigateHome={() => {
+                if (typeof window !== 'undefined') {
+                  window.history.pushState({}, '', '/');
+                }
+                setCurrentView('feed');
+              }}
+            />
+          )}
+
+          {/* Reels / Short-form Video Showcase */}
           {currentView === 'reels' && (
             <ReelsView
               reels={reels}
@@ -871,7 +1072,17 @@ function AppContent() {
               onAddSocialPost={handleAddSocialPost}
               onSendMessage={handleSendMessage}
               onNavigateView={setCurrentView}
-              onOpenProfile={handleOpenUserProfile}
+              onOpenProfile={(u) => {
+                if (u && u.name) {
+                  handleOpenUserProfile(u);
+                }
+              }}
+              onHirePro={(creator) => {
+                if (creator && creator.name) {
+                  handleOpenDirectChat(creator.name);
+                }
+              }}
+              onDeleteReel={handleDeleteReel}
             />
           )}
 
@@ -902,44 +1113,25 @@ function AppContent() {
             />
           )}
 
-          {/* Courses & SETA */}
+          {/* Discover Courses & Bootcamps Worldwide */}
           {currentView === 'courses' && (
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-4 bg-[#1e1e1e] p-5 rounded-2xl border border-neutral-800 shadow-xl">
-                <div>
-                  <h1 className="text-xl font-black text-white">SETA Accredited Courses & Bootcamps</h1>
-                  <p className="text-xs text-neutral-400 font-medium">Free, funded online courses with digital certificates recognized across SA</p>
-                </div>
+            <CoursesView
+              courses={externalCourses}
+              savedCourseIds={savedCourseIds}
+              onToggleSaveCourse={handleToggleSaveCourse}
+              onAddCourse={handleAddExternalCourse}
+              onViewSavedCourses={() => setCurrentView('saved_courses')}
+              currentUserName={user.name}
+            />
+          )}
 
-                <div className="flex flex-wrap gap-1.5 text-xs font-bold">
-                  {['all', 'coding', 'renewable', 'digital', 'data', 'agri'].map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-1.5 rounded-xl border transition-all ${
-                        selectedCategory === cat
-                          ? 'bg-emerald-500 text-slate-950 border-emerald-500 font-black'
-                          : 'bg-[#121212] text-neutral-300 border-neutral-800 hover:bg-neutral-800'
-                      }`}
-                    >
-                      {cat === 'all' ? 'All Categories' : cat.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map(course => (
-                  <CourseCard
-                    key={course.id}
-                    course={course}
-                    isEnrolled={user.enrolledCourseIds.includes(course.id)}
-                    onSelectCourse={setSelectedCourseModal}
-                    onEnroll={handleEnrollCourse}
-                  />
-                ))}
-              </div>
-            </div>
+          {/* Dedicated Saved Courses Wishlist View */}
+          {currentView === 'saved_courses' && (
+            <SavedCoursesView
+              savedCourses={externalCourses.filter(c => savedCourseIds.includes(c.id))}
+              onRemoveFromSaved={handleToggleSaveCourse}
+              onNavigateToDiscovery={() => setCurrentView('courses')}
+            />
           )}
 
           {/* Learnerships */}
@@ -1049,6 +1241,8 @@ function AppContent() {
               viewedUser={viewedProfileUser}
               onUpdateUser={setUser}
               enrolledCourses={courses.filter(c => (viewedProfileUser || user).enrolledCourseIds?.includes(c.id))}
+              savedExternalCourses={externalCourses.filter(c => savedCourseIds.includes(c.id))}
+              onRemoveFromSavedCourses={handleToggleSaveCourse}
               savedLearnerships={learnerships.filter(l => (viewedProfileUser || user).savedLearnershipIds?.includes(l.id))}
               userServices={services.filter(s => s.providerName === (viewedProfileUser || user).name || s.providerId === (viewedProfileUser || user).id)}
               userPosts={socialPosts.filter(p => p.authorName === (viewedProfileUser || user).name || p.authorHandle === (viewedProfileUser || user).handle || p.authorId === (viewedProfileUser || user).id)}

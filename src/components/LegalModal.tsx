@@ -12,14 +12,14 @@ interface LegalModalProps {
 
 const FALLBACK_DOCS: Record<LegalDocType, { title: string; subtitle: string; content: string }> = {
   terms: {
-    title: 'SkillHub ZA Terms of Service',
-    subtitle: 'South Africa ECTA Chapter XI & Consumer Protection Aligned',
-    content: `SKILLHUB ZA — TERMS OF SERVICE (SOUTH AFRICA)
+    title: 'SkillHub Terms of Service',
+    subtitle: 'Global Professional Marketplace Standards',
+    content: `SKILLHUB — TERMS OF SERVICE
 Effective Date: 1 January 2026
-Governing Law: Republic of South Africa
+Governing Law: International Commercial Standards
 
 1. PREAMBLE & ACCEPTANCE OF TERMS
-Welcome to SkillHub ZA, a South African youth skill-sharing and certified artisan marketplace platform operated by SkillHub ZA Social Enterprise (Pty) Ltd. By creating an account, browsing content, or booking an artisan, you agree to these Terms of Service in compliance with the Electronic Communications and Transactions Act No. 25 of 2002 (ECTA) and the Consumer Protection Act No. 68 of 2008 (CPA).
+Welcome to SkillHub, a global professional services and certified artisan marketplace platform. By creating an account, browsing content, or hiring a professional, you agree to these Terms of Service.
 
 2. ELIGIBILITY & AGE VERIFICATION
 - Minimum Age: You must be at least 13 years old to register. 
@@ -29,10 +29,10 @@ Welcome to SkillHub ZA, a South African youth skill-sharing and certified artisa
 Users listing artisanal trade services (plumbing, electrical, solar, construction, mechanical) warrant that any claims of SETA, QCTO, or TVET accreditation are authentic. Misrepresentation of trade certifications is a breach of these Terms and may result in immediate expulsion and referral to regulatory authorities.
 
 4. USER CONTENT & INTELLECTUAL PROPERTY LICENSE
-You retain full copyright ownership of all photos, videos, and articles you post on SkillHub ZA. By uploading content, you grant SkillHub ZA a non-exclusive, worldwide, royalty-free, transferable license to store, host, display, and distribute your content across the platform solely to deliver our services.
+You retain full copyright ownership of all photos, videos, and articles you post on SkillHub. By uploading content, you grant SkillHub a non-exclusive, worldwide, royalty-free, transferable license to store, host, display, and distribute your content across the platform solely to deliver our services.
 
 5. PROHIBITED CONDUCT & SAFE HARBOR
-Under ECTA Chapter XI, SkillHub ZA operates as an intermediary service provider. We do not tolerate:
+SkillHub operates as an intermediary service provider. We do not tolerate:
 - Hate speech, incitement to violence, racism, or tribalism.
 - Harassment, cyber-bullying, or unauthorized disclosure of personal phone numbers.
 - Unlicensed commercial financial schemes, pyramid promotions, or fraud.
@@ -40,20 +40,20 @@ Under ECTA Chapter XI, SkillHub ZA operates as an intermediary service provider.
 Violations result in immediate removal of content and potential permanent termination of the user account.
 
 6. LIMITATION OF LIABILITY & ESCROW
-SkillHub ZA provides an introductory marketplace. While we conduct SETA verification audits, clients and artisans must exercise due diligence. SkillHub ZA's aggregate liability under South African common law shall not exceed fees paid to the platform in the preceding 12 months.
+SkillHub provides an introductory marketplace. While we conduct verification audits, clients and artisans must exercise due diligence. SkillHub's aggregate liability under applicable law shall not exceed fees paid to the platform in the preceding 12 months.
 
 7. DISPUTE RESOLUTION & JURISDICTION
-These Terms are governed exclusively by the laws of the Republic of South Africa. Any dispute shall be referred to arbitration in Johannesburg under the rules of the Arbitration Foundation of Southern Africa (AFSA).`,
+These Terms are governed by fair international commercial standards. Any dispute shall be referred to arbitration under commercial arbitration rules.`,
   },
   privacy: {
-    title: 'POPIA Privacy Policy',
-    subtitle: 'Protection of Personal Information Act No. 4 of 2013 Compliance',
-    content: `SKILLHUB ZA — POPIA PRIVACY POLICY & DATA SUBJECT NOTICE
+    title: 'Privacy Policy',
+    subtitle: 'Global Data Protection & Privacy Compliance',
+    content: `SKILLHUB — GLOBAL PRIVACY POLICY & DATA SUBJECT NOTICE
 Effective Date: 1 January 2026
-Information Officer: privacy@skillhub.co.za
+Information Officer: privacy@skillhub.com
 
 1. RESPONSIBLE PARTY DETAILS
-SkillHub ZA Social Enterprise (Pty) Ltd ("SkillHub ZA") is the responsible party under Section 1 of the Protection of Personal Information Act No. 4 of 2013 (POPIA). We are committed to safeguarding the personal information of our South African youth learners, mentors, and employers.
+SkillHub ("SkillHub") is committed to safeguarding the personal information of our global learners, mentors, and employers.
 
 2. WHAT INFORMATION WE COLLECT
 - Identity Data: Full name, username, date of birth, ID/passport number (for verified artisans only).
@@ -83,28 +83,28 @@ South African Information Regulator: complaints.IR@justice.gov.za | https://info
   },
   'community-guidelines': {
     title: 'Community Guidelines',
-    subtitle: 'Fostering Respect, Ubuntu, and Professional Craftsmanship',
-    content: `SKILLHUB ZA — COMMUNITY GUIDELINES & ARTISAN CODE
+    subtitle: 'Fostering Respect, Integrity, and Professional Craftsmanship',
+    content: `SKILLHUB — COMMUNITY GUIDELINES & ARTISAN CODE
 Effective Date: 1 January 2026
 
-1. THE SPIRIT OF UBUNTU
-SkillHub ZA is built on the philosophy of Ubuntu ("Umuntu ngumuntu ngabantu" — I am because we are). We celebrate diversity across all nine provinces and expect all interactions between youth learners, experienced mentors, and employers to be rooted in mutual dignity, empathy, and professional integrity.
+1. THE SPIRIT OF MUTUAL RESPECT
+SkillHub is built on the philosophy of mutual dignity, empathy, and professional integrity. We celebrate diversity across 50+ countries and expect all interactions between professionals, clients, and partners to be rooted in mutual trust and high standards.
 
 2. ZERO TOLERANCE FOR HARMFUL CONTENT
 The following behavior is strictly banned across all public feeds, reels, and direct messages:
-- Hate Speech: Any expression advocating hatred, discrimination, or violence based on race, ethnicity, gender, sexual orientation, disability, or language.
-- Harassment & Exploitation: Threatening messages, unwanted sexual advances, or predatory behavior towards learners.
+- Hate Speech: Any expression advocating hatred, discrimination, or violence.
+- Harassment & Exploitation: Threatening messages or predatory behavior.
 - Falsified Trade Claims: Advertising electrical, gas, or building services without requisite certifications is illegal and endangers lives.
-- Counterfeits & Scams: Promoting illegal pyramid schemes, fake learnership deposits, or charging application fees for interviews.
+- Counterfeits & Scams: Promoting illegal pyramid schemes, fake deposits, or charging application fees.
 
 3. CONTENT MODERATION & SAFE HARBOR ENFORCEMENT
-Our moderation team acts on reports under ECTA Chapter XI:
+Our moderation team acts on reports:
 - First Violation: Warning and immediate removal of offending content.
-- Second Violation: 7-day account suspension and review of artisan verification status.
-- Severe / Repeat Violations: Permanent ban, blacklisting of phone number, and reporting to relevant statutory bodies (e.g., SAPS, National Consumer Commission).
+- Second Violation: 7-day account suspension and review of verification status.
+- Severe / Repeat Violations: Permanent ban, blacklisting of phone number, and reporting to relevant statutory bodies.
 
 4. HOW TO REPORT A VIOLATION
-Every post and comment on SkillHub ZA features a three-dot menu with a "Report" action. Use it to alert our 24/7 moderation desk immediately.`,
+Every post and comment on SkillHub features a three-dot menu with a "Report" action. Use it to alert our 24/7 moderation desk immediately.`,
   },
 };
 

@@ -65,7 +65,7 @@ export const Login: React.FC<LoginProps> = ({
 
     try {
       const loggedUser = await login(username, password, rememberMe);
-      setSuccessMessage('Welcome back to SkillHub ZA!');
+      setSuccessMessage('Welcome back to SkillHub!');
       setTimeout(() => {
         if (onSuccess) onSuccess(loggedUser);
       }, 500);

@@ -54,6 +54,9 @@ class User(AbstractUser):
     seta_verified = models.BooleanField(_('SETA Verified Learner'), default=False)
     verified = models.BooleanField(_('Verified Profile'), default=False)
     badge = models.CharField(_('Profile Badge'), max-width=100, blank=True, null=True, default='Active Member')
+    rating = models.DecimalField(_('Professional Rating'), max_digits=3, decimal_places=2, default=5.00)
+    hourly_rate = models.DecimalField(_('Hourly Rate in USD'), max_digits=6, decimal_places=2, default=50.00, null=True, blank=True)
+    country = models.CharField(_('Country'), max_length=100, default='Global', blank=True)
 
     # POPIA Compliance (Protection of Personal Information Act) & Consent
     terms_accepted_at = models.DateTimeField(_('Terms Accepted At'), null=True, blank=True)
@@ -65,6 +68,23 @@ class User(AbstractUser):
     date_of_birth = models.DateField(_('Date of Birth'), null=True, blank=True)
     is_minor = models.BooleanField(_('Is Minor Under 18'), default=False)
     parental_consent_token = models.CharField(_('Parental Consent Token'), max-width=100, blank=True, null=True)
+
+    # Business Location (For Public Display ONLY if explicitly enabled by user)
+    business_name = models.CharField(_('Business / Trade Name'), max_length=200, blank=True)
+    business_address = models.CharField(
+        _('Business Street Address'), 
+        max_length=500, 
+        blank=True, 
+        help_text="Full street address of your business"
+    )
+    business_latitude = models.DecimalField(_('Business Latitude'), max_digits=9, decimal_places=6, null=True, blank=True)
+    business_longitude = models.DecimalField(_('Business Longitude'), max_digits=9, decimal_places=6, null=True, blank=True)
+    show_on_map = models.BooleanField(
+        _('Show on Public Map'), 
+        default=False, 
+        help_text="If checked, your business location will be publicly visible on the map."
+    )
+    # Personal Location (NEVER public - keep existing `location` and `province` for city-level display only)
 
     class Meta:
         verbose_name = _('User')
@@ -259,15 +279,28 @@ class Service(models.Model):
         return f"{self.title} by {self.provider.username} (R{self.price} / {self.price_unit})"
 
 
+REEL_CATEGORY_CHOICES = [
+    ('web_dev', 'Web & Mobile Development'),
+    ('design', 'UI/UX & Graphic Design'),
+    ('trades', 'Trades & Technical Craft'),
+    ('tutoring', 'Tutoring & Mentorship'),
+    ('trending', 'Trending Showcases'),
+]
+
+
 class Reel(models.Model):
     """
-    Short video reels showing creative and artisanal skills.
+    Short video portfolio & skills showcase feed for discovering and hiring creators globally.
     """
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reels')
     video_url = models.FileField(_('Reel Video File'), upload_to='reels/videos/', blank=True, null=True)
     caption = models.TextField(_('Reel Caption'), blank=True)
-    audio_track = models.CharField(_('Audio Track'), max-width=150, default='Original Audio - SkillHub ZA')
+    audio_track = models.CharField(_('Audio Track'), max-width=150, default='Original Audio - SkillHub Global')
     tags = models.JSONField(_('Tags'), default=list, blank=True)
+    category = models.CharField(_('Category'), max-width=50, choices=REEL_CATEGORY_CHOICES, default='web_dev')
+    skills = models.JSONField(_('Skills Showcased'), default=list, blank=True)
+    is_portfolio_piece = models.BooleanField(_('Is Portfolio Piece'), default=True)
+    views_count = models.PositiveIntegerField(_('Views Count'), default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -276,7 +309,7 @@ class Reel(models.Model):
         verbose_name_plural = _('Reels')
 
     def __str__(self):
-        return f"Reel #{self.pk} by {self.author.username}: {self.caption[:30]}..."
+        return f"Reel #{self.pk} by {self.author.username} [{self.category}]: {self.caption[:30]}..."
 
 
 class ChatRoom(models.Model):
@@ -468,4 +501,93 @@ class DMCARequest(models.Model):
 
     def __str__(self):
         return f"DMCA Notice #{self.pk} from {self.complainant_name} ({self.status})"
+
+
+class ExternalCourse(models.Model):
+    """
+    Global Course Discovery directory model.
+    Curated and community-submitted external courses, bootcamps, and certifications.
+    Direct enrollment is fulfilled by external providers (Coursera, edX, Udemy, SETA, etc.).
+    """
+    COURSE_TYPES = [
+        ('course', 'Course'),
+        ('bootcamp', 'Bootcamp'),
+        ('certification', 'Certification'),
+        ('workshop', 'Workshop'),
+    ]
+    PRICE_TYPES = [
+        ('free', 'Free'),
+        ('paid', 'Paid'),
+    ]
+    LEVELS = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+    
+    title = models.CharField(_('Course Title'), max_length=300)
+    provider_name = models.CharField(_('Provider Name'), max_length=200)  # e.g., "Coursera", "edX", "MICT SETA"
+    provider_logo_url = models.URLField(_('Provider Logo URL'), blank=True, null=True)
+    external_url = models.URLField(_('Enrollment Destination URL'), max_length=500)  # Where users go to enroll
+    description = models.TextField(_('Course Description'))
+    category = models.CharField(_('Category'), max_length=100)
+    skill_tags = models.JSONField(_('Skill Tags'), default=list, blank=True)
+    course_type = models.CharField(_('Program Type'), max_length=20, choices=COURSE_TYPES, default='course')
+    price_type = models.CharField(_('Pricing Model'), max_length=10, choices=PRICE_TYPES, default='free')
+    price_amount = models.DecimalField(_('Price Amount (USD)'), max_digits=10, decimal_places=2, null=True, blank=True)
+    duration = models.CharField(_('Duration'), max_length=100, blank=True)  # e.g., "3 months"
+    level = models.CharField(_('Difficulty Level'), max_length=20, choices=LEVELS, default='beginner')
+    language = models.CharField(_('Instruction Language'), max_length=50, default='English')
+    region = models.CharField(_('Geographic Focus / Region'), max_length=100, default='Global')
+    rating = models.DecimalField(_('User Rating'), max_digits=3, decimal_places=2, default=0.00)
+    reviews_count = models.IntegerField(_('Reviews Count'), default=0)
+    enrolled_count = models.IntegerField(_('Enrolled Students Count'), default=0)
+    banner_image_url = models.URLField(_('Banner Image URL'), blank=True, null=True)
+    
+    # Submission & Moderation
+    submitted_by = models.ForeignKey(
+        'User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='submitted_courses',
+        verbose_name=_('Submitted By User')
+    )
+    is_approved = models.BooleanField(_('Moderator Approved'), default=False)  # Admin approves before publishing
+    is_flagged = models.BooleanField(_('Flagged / Broken Link'), default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _('External Course')
+        verbose_name_plural = _('External Courses')
+        indexes = [
+            models.Index(fields=['is_approved', 'category']),
+            models.Index(fields=['provider_name']),
+            models.Index(fields=['course_type']),
+            models.Index(fields=['price_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.provider_name})"
+
+
+class SavedCourse(models.Model):
+    """
+    User bookmark wishlist for discovery courses.
+    """
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='saved_courses')
+    course = models.ForeignKey(ExternalCourse, on_delete=models.CASCADE, related_name='saved_by')
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'course')
+        ordering = ['-saved_at']
+        verbose_name = _('Saved Course Wishlist')
+        verbose_name_plural = _('Saved Course Wishlists')
+
+    def __str__(self):
+        return f"{self.user.username} saved {self.course.title}"
+
 

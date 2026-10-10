@@ -367,38 +367,38 @@ Respond with pure JSON object:
     {
       id: "post_1",
       author: {
-        id: "usr_thando_808",
-        username: "thando_dev",
-        first_name: "Thando",
-        last_name: "Mzobe",
-        full_name: "Thando Mzobe",
-        bio: "Full-stack software developer & youth tech mentor in Soweto.",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
-        location: "Soweto, Johannesburg",
-        province: "Gauteng",
-        skills: ["React", "TypeScript", "Node.js", "Python", "Django"],
+        id: "usr_elena",
+        username: "elena_design",
+        first_name: "Elena",
+        last_name: "Rostova",
+        full_name: "Elena Rostova",
+        bio: "Top Rated Lead Brand & UI/UX Designer in Berlin, Germany.",
+        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80",
+        location: "Berlin, Germany",
+        province: "Berlin",
+        skills: ["Brand Identity", "Figma", "Logo Design", "Design Systems"],
         is_creator: true,
-        role: "youth",
+        role: "mentor",
         seta_verified: true,
         verified: true,
-        badge: "Top Contributor"
+        badge: "Top Rated Pro"
       },
-      content: "🇿🇦 Just completed our community Django backend migration for SkillHub ZA! Models, DRF serializers, and admin registration are all set up.",
+      content: "Just finished a brand identity package for a fintech startup in London. Loved working on this modern logo! 🎨 #Branding #Figma #DesignSystems",
       media_type: "image",
-      media_url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80",
+      media_url: "https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&auto=format&fit=crop&q=80",
       video_url: null,
-      category: "Tech & Coding",
-      hashtags: ["Django", "Python", "SkillHubZA", "YouthInTech"],
+      category: "Design & Creative",
+      hashtags: ["Branding", "Figma", "DesignSystems", "Fintech"],
       created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
       updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-      likes_count: 14,
-      comments_count: 3,
+      likes_count: 84,
+      comments_count: 12,
       is_liked: false,
       comments: [
         {
           id: "cmt_1",
-          author: { username: "lerato_solar", full_name: "Lerato Khumalo", avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&auto=format&fit=crop&q=80" },
-          content: "Incredible work! The DRF router makes adding endpoints super fast.",
+          author: { username: "david_cloud", full_name: "David Kim", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80" },
+          content: "The typography choice is immaculate! Clean and modern.",
           created_at: new Date(Date.now() - 3600000).toISOString()
         }
       ]
@@ -780,6 +780,179 @@ Respond with pure JSON object:
   app.get("/api/users/me/", handleUserMe);
   app.get("/api/users/me", handleUserMe);
 
+  // DRF Users Endpoint with django-filter simulation
+  const handleGetUsers = (req: any, res: any) => {
+    const { 
+      search, 
+      category, 
+      location, 
+      is_creator, 
+      rating__gte, 
+      rating, 
+      hourly_rate__gte, 
+      hourly_rate__lte 
+    } = req.query || {};
+
+    let users = [
+      {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        first_name: "Thando",
+        last_name: "Mzobe",
+        full_name: "Thando Mzobe",
+        bio: "Full-stack software developer & cloud systems engineer.",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+        location: "Johannesburg, South Africa",
+        country: "South Africa",
+        province: "Gauteng",
+        skills: ["React", "TypeScript", "Node.js", "Python", "Django", "PostgreSQL"],
+        is_creator: true,
+        role: "youth",
+        seta_verified: true,
+        verified: true,
+        rating: 4.95,
+        hourly_rate: 65.0,
+        badge: "Top Rated Professional"
+      },
+      {
+        id: "usr_sarah",
+        username: "sarah_chen",
+        first_name: "Sarah",
+        last_name: "Chen",
+        full_name: "Sarah Chen",
+        bio: "Lead FullStack Engineer specializing in high-concurrency cloud systems.",
+        avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+        location: "London, UK",
+        country: "United Kingdom",
+        province: "Greater London",
+        skills: ["React", "TypeScript", "Node.js", "GraphQL", "Docker"],
+        is_creator: true,
+        role: "mentor",
+        seta_verified: true,
+        verified: true,
+        rating: 4.98,
+        hourly_rate: 75.0,
+        badge: "Top Rated Pro"
+      },
+      {
+        id: "usr_elena",
+        username: "elena_design",
+        first_name: "Elena",
+        last_name: "Rostova",
+        full_name: "Elena Rostova",
+        bio: "Senior Brand & UI/UX Designer in Berlin, Germany.",
+        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80",
+        location: "Berlin, Germany",
+        country: "Germany",
+        province: "Berlin",
+        skills: ["Brand Identity", "Figma", "UI/UX", "Design Systems"],
+        is_creator: true,
+        role: "mentor",
+        seta_verified: true,
+        verified: true,
+        rating: 4.97,
+        hourly_rate: 70.0,
+        badge: "Top Rated Pro"
+      },
+      {
+        id: "usr_michael",
+        username: "michael_botha",
+        first_name: "Michael",
+        last_name: "Botha",
+        full_name: "Michael Botha",
+        bio: "Smart Home & Commercial Solar PV Specialist.",
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80",
+        location: "Toronto, Canada",
+        country: "Canada",
+        province: "Ontario",
+        skills: ["Solar PV", "Smart Home", "Energy Storage", "Electrical"],
+        is_creator: true,
+        role: "mentor",
+        seta_verified: true,
+        verified: true,
+        rating: 4.95,
+        hourly_rate: 85.0,
+        badge: "Artisan Pro"
+      },
+      {
+        id: "usr_amara",
+        username: "amara_ai",
+        first_name: "Amara",
+        last_name: "Okafor",
+        full_name: "Amara Okafor",
+        bio: "AI Engineer & PyTorch/LLM fine-tuning specialist.",
+        avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&auto=format&fit=crop&q=80",
+        location: "Lagos, Nigeria",
+        country: "Nigeria",
+        province: "Lagos",
+        skills: ["AI & Data Science", "Python", "PyTorch", "LLM", "NLP"],
+        is_creator: true,
+        role: "youth",
+        seta_verified: true,
+        verified: true,
+        rating: 4.89,
+        hourly_rate: 60.0,
+        badge: "AI Specialist"
+      }
+    ];
+
+    if (search) {
+      const q = String(search).toLowerCase();
+      users = users.filter(u => 
+        u.username.toLowerCase().includes(q) ||
+        u.full_name.toLowerCase().includes(q) ||
+        u.bio.toLowerCase().includes(q) ||
+        u.skills.some(s => s.toLowerCase().includes(q))
+      );
+    }
+
+    if (category) {
+      const cat = String(category).toLowerCase();
+      users = users.filter(u => 
+        u.skills.some(s => s.toLowerCase().includes(cat)) ||
+        u.bio.toLowerCase().includes(cat)
+      );
+    }
+
+    if (location) {
+      const loc = String(location).toLowerCase();
+      users = users.filter(u => 
+        u.location.toLowerCase().includes(loc) ||
+        u.country.toLowerCase().includes(loc)
+      );
+    }
+
+    if (is_creator !== undefined) {
+      const isC = String(is_creator).toLowerCase() === 'true';
+      users = users.filter(u => u.is_creator === isC);
+    }
+
+    const minR = parseFloat(rating__gte || rating);
+    if (!isNaN(minR)) {
+      users = users.filter(u => u.rating >= minR);
+    }
+
+    const minP = parseFloat(hourly_rate__gte);
+    if (!isNaN(minP)) {
+      users = users.filter(u => u.hourly_rate >= minP);
+    }
+
+    const maxP = parseFloat(hourly_rate__lte);
+    if (!isNaN(maxP)) {
+      users = users.filter(u => u.hourly_rate <= maxP);
+    }
+
+    res.json({
+      count: users.length,
+      next: null,
+      previous: null,
+      results: users
+    });
+  };
+
+  app.get("/api/users", handleGetUsers);
+  app.get("/api/users/", handleGetUsers);
+
   // DRF Posts Endpoint
   const handleGetPosts = (req: any, res: any) => {
     res.json({
@@ -931,6 +1104,518 @@ Respond with pure JSON object:
       results: dbServices
     });
   });
+
+  // DRF Privacy-First Map Pins Endpoint
+  app.get(["/api/map/pins", "/api/map/pins/"], (req, res) => {
+    const defaultPublicPins = [
+      {
+        id: "usr_pin_1",
+        username: "thando_dev",
+        business_name: "Thando Cloud & Solar Tech",
+        business_latitude: -26.2041,
+        business_longitude: 28.0473,
+        category: "Solar & Inverter Tech",
+        rating: 4.95,
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
+        show_on_map: true
+      },
+      {
+        id: "usr_pin_2",
+        username: "khaya_plumb",
+        business_name: "Soweto Artisan Workshop",
+        business_latitude: -26.2678,
+        business_longitude: 27.8585,
+        category: "Plumbing & Piping",
+        rating: 4.88,
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
+        show_on_map: true
+      },
+      {
+        id: "usr_pin_3",
+        username: "elena_design",
+        business_name: "Creative Hub Studio",
+        business_latitude: -26.1458,
+        business_longitude: 28.0444,
+        category: "Brand & UI/UX Design",
+        rating: 4.98,
+        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80",
+        show_on_map: true
+      }
+    ];
+
+    res.json({
+      count: defaultPublicPins.length,
+      next: null,
+      previous: null,
+      results: defaultPublicPins
+    });
+  });
+
+  // DRF Reviews Endpoint
+  let dbReviews = [
+    {
+      id: "rev_1",
+      reviewer: { id: "usr_elena", username: "elena_design", full_name: "Elena Rostova", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80" },
+      reviewee: "usr_thando_808",
+      rating: 5.0,
+      comment: "Thando was fantastic! Delivered the project ahead of schedule and communicated perfectly.",
+      created_at: new Date(Date.now() - 86400000 * 3).toISOString()
+    },
+    {
+      id: "rev_2",
+      reviewer: { id: "usr_sarah", username: "sarah_chen", full_name: "Sarah Chen", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80" },
+      reviewee: "usr_thando_808",
+      rating: 5.0,
+      comment: "Exceptional engineer. We hired Thando to build a real-time event streaming pipeline and REST API.",
+      created_at: new Date(Date.now() - 86400000 * 14).toISOString()
+    }
+  ];
+
+  app.get("/api/reviews", (req, res) => {
+    res.json({ count: dbReviews.length, results: dbReviews });
+  });
+  app.get("/api/reviews/", (req, res) => {
+    res.json({ count: dbReviews.length, results: dbReviews });
+  });
+
+  app.post("/api/reviews", (req, res) => {
+    const { reviewee, rating, comment } = req.body || {};
+    const newRev = {
+      id: `rev_${Date.now()}`,
+      reviewer: { id: "usr_client", username: "client_user", full_name: "Verified Client", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" },
+      reviewee: reviewee || "usr_thando_808",
+      rating: parseFloat(rating) || 5.0,
+      comment: comment || "",
+      created_at: new Date().toISOString()
+    };
+    dbReviews.unshift(newRev);
+    res.status(201).json(newRev);
+  });
+  app.post("/api/reviews/", (req, res) => {
+    const { reviewee, rating, comment } = req.body || {};
+    const newRev = {
+      id: `rev_${Date.now()}`,
+      reviewer: { id: "usr_client", username: "client_user", full_name: "Verified Client", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" },
+      reviewee: reviewee || "usr_thando_808",
+      rating: parseFloat(rating) || 5.0,
+      comment: comment || "",
+      created_at: new Date().toISOString()
+    };
+    dbReviews.unshift(newRev);
+    res.status(201).json(newRev);
+  });
+
+  // DRF Portfolio Endpoint
+  let dbPortfolio = [
+    {
+      id: "port_1",
+      user: "usr_thando_808",
+      title: "Fintech Analytics Platform",
+      description: "A global multi-currency payment analytics dashboard with high-frequency charting, automated reconciliation, and dark-mode UI.",
+      media_url: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80",
+      created_at: new Date(Date.now() - 86400000 * 30).toISOString()
+    }
+  ];
+
+  app.get("/api/portfolio", (req, res) => {
+    res.json({ count: dbPortfolio.length, results: dbPortfolio });
+  });
+  app.get("/api/portfolio/", (req, res) => {
+    res.json({ count: dbPortfolio.length, results: dbPortfolio });
+  });
+
+  app.post("/api/portfolio", (req, res) => {
+    const { title, description, media_url } = req.body || {};
+    const newItem = {
+      id: `port_${Date.now()}`,
+      user: "usr_thando_808",
+      title: title || "New Project",
+      description: description || "",
+      media_url: media_url || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80",
+      created_at: new Date().toISOString()
+    };
+    dbPortfolio.unshift(newItem);
+    res.status(201).json(newItem);
+  });
+  app.post("/api/portfolio/", (req, res) => {
+    const { title, description, media_url } = req.body || {};
+    const newItem = {
+      id: `port_${Date.now()}`,
+      user: "usr_thando_808",
+      title: title || "New Project",
+      description: description || "",
+      media_url: media_url || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80",
+      created_at: new Date().toISOString()
+    };
+    dbPortfolio.unshift(newItem);
+    res.status(201).json(newItem);
+  });
+
+  // DRF External Course Discovery Endpoints
+  let dbExternalCourses = [
+    {
+      id: "ext_crs_1",
+      title: "Meta Front-End Developer Professional Certificate",
+      provider_name: "Coursera",
+      provider_logo_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=120&auto=format&fit=crop&q=80",
+      external_url: "https://www.coursera.org/professional-certificates/meta-front-end-developer",
+      description: "Launch your career as a front-end developer. Build job-ready skills in React, JavaScript, HTML/CSS, UI/UX design, and Git version control from Meta engineers.",
+      category: "Coding",
+      skill_tags: ["React", "JavaScript", "HTML/CSS", "Git", "UI/UX"],
+      course_type: "certification",
+      price_type: "paid",
+      price_amount: 49.0,
+      duration: "1-3 months",
+      level: "beginner",
+      language: "English",
+      region: "Global",
+      rating: 4.8,
+      reviews_count: 14820,
+      enrolled_count: 184500,
+      is_approved: true,
+      is_flagged: false,
+      banner_image_url: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80",
+      created_at: "2026-01-15T10:00:00Z"
+    },
+    {
+      id: "ext_crs_2",
+      title: "CS50's Introduction to Computer Science",
+      provider_name: "edX",
+      provider_logo_url: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=120&auto=format&fit=crop&q=80",
+      external_url: "https://www.edx.org/cs50",
+      description: "An introduction to the intellectual enterprises of computer science and the art of programming. Covers algorithms, data structures, and web development.",
+      category: "Coding",
+      skill_tags: ["C", "Python", "SQL", "Algorithms", "Computer Science"],
+      course_type: "course",
+      price_type: "free",
+      price_amount: 0,
+      duration: "3+ months",
+      level: "beginner",
+      language: "English",
+      region: "Global",
+      rating: 4.95,
+      reviews_count: 32400,
+      enrolled_count: 4200000,
+      is_approved: true,
+      is_flagged: false,
+      banner_image_url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80",
+      created_at: "2026-01-18T14:30:00Z"
+    },
+    {
+      id: "ext_netacad_1",
+      title: "Cisco NetAcad: Cybersecurity Awareness Month & Defense Pathways",
+      provider_name: "Cisco Networking Academy",
+      provider_logo_url: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=120&auto=format&fit=crop&q=80",
+      external_url: "http://nsmail.netacad.com/MDU5LVZGWi04MzQAAAGksP17m3azQKzNq4QmCg_irH9xXRrHCI04r_gcL_bTWsLM6UIHlCkWbtTXCfpQswbcZ5-YHfg=",
+      description: "Special Cybersecurity Awareness Month official track by Cisco. Learn how to defend against modern digital threats, social engineering, ransomware, and vulnerabilities.",
+      category: "Cybersecurity",
+      skill_tags: ["Cybersecurity", "Threat Defense", "Network Security", "Ethical Hacking", "Cisco"],
+      course_type: "certification",
+      price_type: "free",
+      price_amount: 0,
+      duration: "4-6 weeks",
+      level: "beginner",
+      language: "English",
+      region: "Global",
+      rating: 4.93,
+      reviews_count: 42100,
+      enrolled_count: 850000,
+      banner_image_url: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&auto=format&fit=crop&q=80",
+      is_approved: true,
+      is_flagged: false,
+      created_at: "2026-03-22T08:00:00Z"
+    },
+    {
+      id: "ext_netacad_2",
+      title: "Cisco NetAcad: Networking Catalog & CCNA Certification Track",
+      provider_name: "Cisco Networking Academy",
+      provider_logo_url: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=120&auto=format&fit=crop&q=80",
+      external_url: "https://www.netacad.com/catalogs/learn/networking?utm_medium=email&utm_source=marketo&utm_campaign=en_brand&utm_content=GLBL-Annc-FY27-CybersecurityAwarenessMonth&utm_team=demand_gen",
+      description: "Industry-standard foundational and associate networking curriculum. Master routing, switching, wireless essentials, IP addressing, and enterprise network architecture.",
+      category: "Coding",
+      skill_tags: ["Networking", "CCNA", "Routing & Switching", "TCP/IP", "Subnetting", "Cisco IOS"],
+      course_type: "certification",
+      price_type: "free",
+      price_amount: 0,
+      duration: "1-3 months",
+      level: "intermediate",
+      language: "English",
+      region: "Global",
+      rating: 4.96,
+      reviews_count: 89000,
+      enrolled_count: 2100000,
+      banner_image_url: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&auto=format&fit=crop&q=80",
+      is_approved: true,
+      is_flagged: false,
+      created_at: "2026-03-22T08:30:00Z"
+    }
+  ];
+
+  let dbSavedCourses: { [userId: string]: string[] } = {
+    "usr_thando_808": ["ext_crs_1", "ext_crs_2"]
+  };
+
+  const handleGetCourses = (req: any, res: any) => {
+    const { category, search, course_type, price_type } = req.query || {};
+    let results = dbExternalCourses.filter(c => c.is_approved);
+
+    if (category && category !== "all") {
+      results = results.filter(c => c.category.toLowerCase() === String(category).toLowerCase());
+    }
+    if (course_type && course_type !== "all") {
+      results = results.filter(c => c.course_type.toLowerCase() === String(course_type).toLowerCase());
+    }
+    if (price_type && price_type !== "all") {
+      results = results.filter(c => c.price_type.toLowerCase() === String(price_type).toLowerCase());
+    }
+    if (search) {
+      const q = String(search).toLowerCase();
+      results = results.filter(c => 
+        c.title.toLowerCase().includes(q) || 
+        c.provider_name.toLowerCase().includes(q) ||
+        c.skill_tags.some(t => t.toLowerCase().includes(q))
+      );
+    }
+
+    res.json({ count: results.length, results });
+  };
+
+  app.get("/api/courses", handleGetCourses);
+  app.get("/api/courses/", handleGetCourses);
+  app.get("/api/external-courses", handleGetCourses);
+  app.get("/api/external-courses/", handleGetCourses);
+
+  app.post("/api/courses", (req: any, res: any) => {
+    const newCourse = {
+      id: `ext_crs_${Date.now()}`,
+      ...req.body,
+      is_approved: false, // Moderated by admin
+      is_flagged: false,
+      rating: 5.0,
+      reviews_count: 1,
+      enrolled_count: 1,
+      created_at: new Date().toISOString()
+    };
+    dbExternalCourses.unshift(newCourse);
+    res.status(201).json(newCourse);
+  });
+  app.post("/api/courses/", (req: any, res: any) => {
+    const newCourse = {
+      id: `ext_crs_${Date.now()}`,
+      ...req.body,
+      is_approved: false,
+      is_flagged: false,
+      rating: 5.0,
+      reviews_count: 1,
+      enrolled_count: 1,
+      created_at: new Date().toISOString()
+    };
+    dbExternalCourses.unshift(newCourse);
+    res.status(201).json(newCourse);
+  });
+
+  app.post("/api/courses/:id/save", (req: any, res: any) => {
+    const courseId = req.params.id;
+    const userId = "usr_thando_808";
+    if (!dbSavedCourses[userId]) dbSavedCourses[userId] = [];
+    const list = dbSavedCourses[userId];
+    const exists = list.includes(courseId);
+    if (exists) {
+      dbSavedCourses[userId] = list.filter(id => id !== courseId);
+      res.json({ status: "unsaved", is_saved: false });
+    } else {
+      list.push(courseId);
+      res.status(201).json({ status: "saved", is_saved: true });
+    }
+  });
+
+  app.post("/api/courses/:id/report", (req: any, res: any) => {
+    const course = dbExternalCourses.find(c => c.id === req.params.id);
+    if (course) {
+      course.is_flagged = true;
+    }
+    res.json({ status: "flagged", message: "Report received for moderator inspection" });
+  });
+
+  // DRF Reels Endpoints (Portfolio & Skills Showcase)
+  let dbReels = [
+    {
+      id: "reel_1",
+      author: {
+        id: "usr_sarah",
+        username: "sarah_chen",
+        full_name: "Sarah Chen",
+        avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80",
+        location: "London, UK 🇬🇧",
+        rating: 4.98,
+        verified: true,
+        hourly_rate: 75.0,
+        badges: ["Verified Pro", "Top Rated"]
+      },
+      caption: "Just deployed a full-stack e-commerce app for a UK client. Check out the dashboard! 🚀 #React #WebDev #TypeScript",
+      video_url: "https://assets.mixkit.co/videos/preview/mixkit-software-developer-working-on-code-41315-large.mp4",
+      audio_track: "Ambient Tech - Sarah Studio",
+      category: "web_dev",
+      skills: ["React", "TypeScript", "Node.js", "PostgreSQL"],
+      is_portfolio_piece: true,
+      views_count: 2450,
+      likes_count: 428,
+      comments_count: 38,
+      shares_count: 54,
+      is_liked: true,
+      created_at: new Date(Date.now() - 86400000 * 2).toISOString()
+    },
+    {
+      id: "reel_2",
+      author: {
+        id: "usr_elena",
+        username: "elena_design",
+        full_name: "Elena Rostova",
+        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80",
+        location: "Berlin, Germany 🇩🇪",
+        rating: 4.97,
+        verified: true,
+        hourly_rate: 70.0,
+        badges: ["Verified Pro", "Top Rated"]
+      },
+      caption: "Brand identity & dark-mode design system deliverable for a London FinTech startup. Figma tokens in action! 🎨 #Branding #Figma #UIUX",
+      video_url: "https://assets.mixkit.co/videos/preview/mixkit-graphic-designer-working-on-a-digital-tablet-41586-large.mp4",
+      audio_track: "Minimalist Beats - Elena Design",
+      category: "design",
+      skills: ["Figma", "UI/UX Design", "Design Systems", "Branding"],
+      is_portfolio_piece: true,
+      views_count: 3820,
+      likes_count: 615,
+      comments_count: 49,
+      shares_count: 88,
+      is_liked: false,
+      created_at: new Date(Date.now() - 86400000 * 4).toISOString()
+    },
+    {
+      id: "reel_3",
+      author: {
+        id: "usr_michael",
+        username: "michael_botha",
+        full_name: "Michael Botha",
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
+        location: "Toronto, Canada 🇨🇦",
+        rating: 4.95,
+        verified: true,
+        hourly_rate: 85.0,
+        badges: ["Verified Pro", "Top Rated"]
+      },
+      caption: "Commissioning an 85kW commercial solar rooftop array with smart inverters and live telemetry. ☀️🔋 #SolarPV #CleanEnergy #Electrical",
+      video_url: "https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-carpenter-measuring-wood-41584-large.mp4",
+      audio_track: "Trades & Innovations - Michael Botha",
+      category: "trades",
+      skills: ["Solar PV", "Smart Inverters", "Electrical", "CAD"],
+      is_portfolio_piece: true,
+      views_count: 1940,
+      likes_count: 345,
+      comments_count: 29,
+      shares_count: 42,
+      is_liked: false,
+      created_at: new Date(Date.now() - 86400000 * 6).toISOString()
+    }
+  ];
+
+  const handleGetReels = (req: any, res: any) => {
+    let results = [...dbReels];
+    const category = req.query.category;
+    if (category && category !== 'for_you' && category !== 'trending') {
+      const catNorm = String(category).toLowerCase().replace('-', '_');
+      results = results.filter(r => r.category === catNorm);
+    }
+    res.json({
+      count: results.length,
+      next: null,
+      previous: null,
+      results
+    });
+  };
+
+  app.get("/api/reels", handleGetReels);
+  app.get("/api/reels/", handleGetReels);
+
+  app.post("/api/reels", (req, res) => {
+    const { caption, video_url, category, skills, is_portfolio_piece, audio_track } = req.body || {};
+    if (!video_url) {
+      return res.status(400).json({ video_url: ["This field is required."] });
+    }
+    const newReel = {
+      id: `reel_${Date.now()}`,
+      author: {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        full_name: "Thando Mzobe",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+        location: "Johannesburg, South Africa 🇿🇦",
+        rating: 4.95,
+        verified: true,
+        hourly_rate: 65.0,
+        badges: ["Verified Pro", "Top Rated"]
+      },
+      caption: caption || "",
+      video_url,
+      audio_track: audio_track || "Original Audio",
+      category: category || "web_dev",
+      skills: Array.isArray(skills) ? skills : (skills ? String(skills).split(",").map(s => s.trim()) : []),
+      is_portfolio_piece: is_portfolio_piece !== undefined ? Boolean(is_portfolio_piece) : true,
+      views_count: 1,
+      likes_count: 1,
+      comments_count: 0,
+      shares_count: 0,
+      is_liked: true,
+      created_at: new Date().toISOString()
+    };
+    dbReels.unshift(newReel);
+    res.status(201).json(newReel);
+  });
+  app.post("/api/reels/", (req, res) => {
+    const { caption, video_url, category, skills, is_portfolio_piece, audio_track } = req.body || {};
+    if (!video_url) {
+      return res.status(400).json({ video_url: ["This field is required."] });
+    }
+    const newReel = {
+      id: `reel_${Date.now()}`,
+      author: {
+        id: "usr_thando_808",
+        username: "thando_dev",
+        full_name: "Thando Mzobe",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+        location: "Johannesburg, South Africa 🇿🇦",
+        rating: 4.95,
+        verified: true,
+        hourly_rate: 65.0,
+        badges: ["Verified Pro", "Top Rated"]
+      },
+      caption: caption || "",
+      video_url,
+      audio_track: audio_track || "Original Audio",
+      category: category || "web_dev",
+      skills: Array.isArray(skills) ? skills : (skills ? String(skills).split(",").map(s => s.trim()) : []),
+      is_portfolio_piece: is_portfolio_piece !== undefined ? Boolean(is_portfolio_piece) : true,
+      views_count: 1,
+      likes_count: 1,
+      comments_count: 0,
+      shares_count: 0,
+      is_liked: true,
+      created_at: new Date().toISOString()
+    };
+    dbReels.unshift(newReel);
+    res.status(201).json(newReel);
+  });
+
+  app.delete("/api/reels/:id", (req, res) => {
+    const { id } = req.params;
+    const initialLen = dbReels.length;
+    dbReels = dbReels.filter(r => r.id !== id);
+    if (dbReels.length < initialLen) {
+      return res.status(204).send();
+    }
+    return res.status(404).json({ detail: "Reel not found." });
+  });
+
   // DRF Chat Rooms & Messaging Endpoints (Phase 3 Channels Support)
   let dbRooms = [
     {

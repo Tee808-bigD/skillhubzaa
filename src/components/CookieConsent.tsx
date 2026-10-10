@@ -47,7 +47,7 @@ export const CookieConsent: React.FC = () => {
           <div className="space-y-1">
             <h4 className="text-sm font-bold tracking-tight">POPIA & Cookie Privacy Notice</h4>
             <p className="text-xs text-slate-300 leading-relaxed">
-              SkillHub ZA uses essential security cookies (JWT authentication & CSRF protection) and optional analytics to provide an accredited artisan experience in South Africa.
+              SkillHub uses essential security cookies (JWT authentication & CSRF protection) and optional analytics to provide a secure professional services marketplace worldwide.
             </p>
           </div>
         </div>

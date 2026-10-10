@@ -19,6 +19,10 @@ from .views import (
     ReportViewSet,
     DMCARequestView,
     LegalDocumentView,
+    ExternalCourseViewSet,
+    SavedCourseViewSet,
+    MapPinsListView,
+    BusinessLocationUpdateView,
 )
 
 router = DefaultRouter()
@@ -32,6 +36,8 @@ router.register(r'reels', ReelViewSet, basename='reel')
 router.register(r'messages', MessageViewSet, basename='message')
 router.register(r'rooms', ChatRoomViewSet, basename='chatroom')
 router.register(r'reports', ReportViewSet, basename='report')
+router.register(r'courses', ExternalCourseViewSet, basename='external-course')
+router.register(r'saved-courses', SavedCourseViewSet, basename='saved-course')
 
 urlpatterns = [
     # POPIA Compliance & Consent Endpoints
@@ -44,6 +50,9 @@ urlpatterns = [
     path('users/avatar/', AvatarUpdateView.as_view(), name='user-avatar-update'),
     # Safe Harbor & DMCA
     path('dmca/', DMCARequestView.as_view(), name='core-dmca-request'),
+    # Privacy-First OpenStreetMap Map Pins & Business Location
+    path('map/pins/', MapPinsListView.as_view(), name='core-map-pins'),
+    path('users/business-location/', BusinessLocationUpdateView.as_view(), name='core-business-location'),
     # Legal Documents (Terms, Privacy Policy, Community Guidelines)
     path('legal/<str:policy_type>/', LegalDocumentView.as_view(), name='core-legal-document'),
     path('', include(router.urls)),

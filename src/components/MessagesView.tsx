@@ -496,12 +496,12 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               </div>
               <div>
                 <h3 className="font-black text-lg text-white">Media Permissions Required</h3>
-                <p className="text-xs text-neutral-400 font-medium">SkillHub ZA Live Communication</p>
+                <p className="text-xs text-neutral-400 font-medium">SkillHub Live Communication</p>
               </div>
             </div>
 
             <p className="text-xs text-neutral-300 leading-relaxed font-medium bg-neutral-900/80 p-3.5 rounded-2xl border border-neutral-800">
-              SkillHub ZA requires permission to open your <span className="text-emerald-400 font-bold">Camera</span> and <span className="text-emerald-400 font-bold">Microphone</span> to start live {callPermissionModal.mode === 'video' ? 'video' : 'voice'} chatting with <strong className="text-white">{activeConversation.participantName}</strong>.
+              SkillHub requires permission to open your <span className="text-emerald-400 font-bold">Camera</span> and <span className="text-emerald-400 font-bold">Microphone</span> to start live {callPermissionModal.mode === 'video' ? 'video' : 'voice'} chatting with <strong className="text-white">{activeConversation.participantName}</strong>.
             </p>
 
             <div className="space-y-3 bg-[#222] p-4 rounded-2xl border border-neutral-800">

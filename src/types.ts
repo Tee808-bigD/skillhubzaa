@@ -28,20 +28,97 @@ export interface User {
   avatar: string;
   bio?: string;
   location: string;
-  province: SouthAfricanProvince;
+  country?: string;
+  city?: string;
+  flagEmoji?: string;
+  province?: SouthAfricanProvince;
   verified?: boolean;
   setaVerified?: boolean;
+  rating?: number;
+  reviewsCount?: number;
+  isTopRated?: boolean;
+  primarySkill?: string;
+  title?: string;
+  hourlyRate?: string;
   role: 'youth' | 'mentor' | 'employer' | 'trainer';
   skills: string[];
   educationLevel: string;
   matricYear?: number;
   badge?: string;
   enrolledCourseIds: string[];
+  savedExternalCourseIds?: string[];
   savedLearnershipIds: string[];
   savedServiceIds: string[];
   savedResourceIds: string[];
   certificatesCount: number;
   phone?: string;
+  // Professional Marketplace stats & attributes
+  jobsCompleted?: number;
+  yearsOfExperience?: string;
+  responseTime?: string;
+  availability?: string;
+  // Privacy-first Business Location (public only if show_on_map is true)
+  business_name?: string;
+  business_address?: string;
+  business_latitude?: number | null;
+  business_longitude?: number | null;
+  show_on_map?: boolean;
+}
+
+export interface MapPin {
+  id: string;
+  type: 'business' | 'service' | 'event';
+  title: string;
+  business_name?: string;
+  owner_name?: string;
+  avatar?: string;
+  category: string;
+  rating?: number;
+  lat: number;
+  lng: number;
+  address?: string;
+  priceZar?: number;
+  username?: string;
+  data?: any;
+}
+
+export interface Review {
+  id: string;
+  reviewerId: string;
+  reviewerName: string;
+  reviewerAvatar: string;
+  reviewerCountry?: string;
+  reviewerRole?: string;
+  revieweeId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  projectTitle?: string;
+}
+
+export interface PortfolioItem {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  mediaUrl: string;
+  mediaType?: 'image' | 'video';
+  client?: string;
+  category?: string;
+  skills: string[];
+  liveUrl?: string;
+  createdAt: string;
+}
+
+export interface ProfessionalServiceItem {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  price: string;
+  deliveryDays?: string;
+  features?: string[];
+  category?: string;
 }
 
 export interface LearningResource {
@@ -100,6 +177,46 @@ export interface Course {
   price: string; // 'Free (SDF Funded)' or 'R750'
   tags: string[];
   isFeatured?: boolean;
+}
+
+export type CourseType = 'course' | 'bootcamp' | 'certification' | 'workshop';
+export type PriceType = 'free' | 'paid';
+export type CourseLevel = 'beginner' | 'intermediate' | 'advanced';
+
+export interface ExternalCourse {
+  id: string;
+  title: string;
+  provider_name: string; // e.g., "Coursera"
+  provider_logo_url?: string;
+  external_url: string; // Where users go to enroll
+  description: string;
+  category: string;
+  skill_tags: string[];
+  course_type: CourseType;
+  price_type: PriceType;
+  price_amount?: number | null;
+  duration: string; // e.g., "3 months"
+  level: CourseLevel;
+  language: string; // default "English"
+  region: string; // default "Global"
+  rating: number; // default 0.00
+  reviews_count: number;
+  enrolled_count: number;
+  submitted_by?: string | null;
+  submitted_by_name?: string | null;
+  is_approved: boolean;
+  is_flagged?: boolean;
+  banner_image_url?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SavedCourse {
+  id: string;
+  user_id: string;
+  course_id: string;
+  course: ExternalCourse;
+  saved_at: string;
 }
 
 export interface Learnership {
@@ -176,6 +293,7 @@ export type MainView =
   | 'map'
   | 'audio_spaces'
   | 'courses' 
+  | 'saved_courses' 
   | 'learnerships' 
   | 'services' 
   | 'mentors' 
@@ -192,6 +310,10 @@ export interface SocialPost {
   authorHandle: string;
   authorAvatar: string;
   authorLocation: string;
+  authorCountry?: string;
+  authorRating?: number;
+  authorVerified?: boolean;
+  authorPrimarySkill?: string;
   createdAt: string;
   content: string;
   hashtags?: string[];
@@ -203,13 +325,31 @@ export interface SocialPost {
   isLiked?: boolean;
   isBookmarked?: boolean;
   category?: string;
+  postType?: 'showcase' | 'service_request';
+  serviceRequest?: {
+    budget?: string;
+    deadline?: string;
+    preferredRegion?: string;
+  };
 }
+
+export interface StorySlideReaction {
+  id: string;
+  emoji: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  createdAt: string;
+}
+
+export type StoryReaction = StorySlideReaction;
 
 export interface StorySlide {
   id: string;
   mediaUrl: string;
   createdAt: string;
   caption?: string;
+  reactions?: StorySlideReaction[];
 }
 
 export interface Story {
@@ -227,6 +367,11 @@ export interface Reel {
   authorName: string;
   authorHandle: string;
   authorAvatar: string;
+  authorLocation?: string;
+  authorCountry?: string;
+  authorRating?: number;
+  authorVerified?: boolean;
+  authorHourlyRate?: string;
   caption: string;
   videoUrl: string;
   likesCount: number;
@@ -236,6 +381,10 @@ export interface Reel {
   isBookmarked?: boolean;
   audioTrack: string;
   tags: string[];
+  skills?: string[];
+  category?: 'web_dev' | 'design' | 'trades' | 'tutoring' | 'trending' | string;
+  isPortfolioPiece?: boolean;
+  viewsCount?: number;
 }
 
 export interface CommunityEvent {
