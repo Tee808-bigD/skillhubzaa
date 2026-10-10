@@ -573,7 +573,9 @@ export const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
   const shouldShowEmptyState = !hasAnyPins || (hasAnyPins && visiblePinsInRadius.length === 0);
 
   return (
-    <div className="relative w-full h-[calc(100vh-120px)] min-h-[550px] bg-[#0c0c0e] rounded-3xl overflow-hidden border border-neutral-800 shadow-2xl flex flex-col">
+    <div className="w-full flex flex-col gap-4 pb-8">
+      {/* MAP CONTAINER */}
+      <div className="relative w-full h-[calc(100vh-160px)] min-h-[500px] bg-[#0c0c0e] rounded-3xl overflow-hidden border border-neutral-800 shadow-2xl flex flex-col">
       
       {/* Top Floating Control Bar */}
       <div className="absolute top-4 left-4 right-4 z-400 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
@@ -737,67 +739,6 @@ export const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
         </span>
       </div>
 
-      {/* CORRECTED EMPTY STATE: Non-blocking, contextual, with clear escape hatch */}
-      {shouldShowEmptyState && (
-        <div className="absolute bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 z-400 pointer-events-none w-full max-w-md px-4">
-          <div className="pointer-events-auto bg-[#18181b]/95 border border-neutral-800 p-5 rounded-3xl text-center shadow-2xl backdrop-blur-xl space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <div className="w-10 h-10 rounded-2xl bg-neutral-800/90 text-emerald-400 flex items-center justify-center mx-auto">
-              <Compass className="w-5 h-5" />
-            </div>
-
-            <div>
-              <h4 className="text-sm font-black text-white">
-                {hasAnyPins ? 'No businesses in this region' : 'No businesses found'}
-              </h4>
-              <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                {hasAnyPins
-                  ? "Try zooming out or clicking 'Show All Pins' to see businesses in other areas."
-                  : 'Be the first artisan or service provider to add your business to the map!'}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-              {hasAnyPins ? (
-                <>
-                  <button
-                    onClick={handleFitAllPins}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/25 transition cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Compass className="w-3.5 h-3.5" />
-                    <span>Show All Pins</span>
-                  </button>
-
-                  <button
-                    onClick={() => setRadiusKm(prev => Math.min(prev + 25, 100))}
-                    className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold rounded-xl transition cursor-pointer"
-                  >
-                    Expand to {Math.min(radiusKm + 25, 100)}km
-                  </button>
-
-                  {currentUser && (
-                    <button
-                      onClick={() => setIsLocationModalOpen(true)}
-                      className="px-3.5 py-2 bg-neutral-800/90 hover:bg-neutral-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
-                    >
-                      Add Your Business
-                    </button>
-                  )}
-                </>
-              ) : (
-                currentUser && (
-                  <button
-                    onClick={() => setIsLocationModalOpen(true)}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-lg shadow-emerald-500/25 transition cursor-pointer"
-                  >
-                    + Add Business Pin
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Selected Pin Bottom Slide Drawer (Mobile & Desktop friendly) */}
       {selectedItem && (
         <div className="absolute bottom-4 right-4 z-400 max-w-sm w-full bg-[#18181b]/95 border border-neutral-800 p-4 rounded-3xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-200">
@@ -864,6 +805,67 @@ export const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
                 View Full Profile
               </button>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      </div>
+
+      {/* OUTSIDE THE MAP (BELOW): Transparent Empty State Card */}
+      {shouldShowEmptyState && (
+        <div className="w-full max-w-xl mx-auto bg-transparent border border-neutral-800/80 p-5 rounded-3xl text-center space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="w-10 h-10 rounded-2xl bg-white/[0.04] border border-neutral-800 text-emerald-400 flex items-center justify-center mx-auto">
+            <Compass className="w-5 h-5" />
+          </div>
+
+          <div>
+            <h4 className="text-sm font-black text-white">
+              {hasAnyPins ? 'No businesses in this region' : 'No businesses found'}
+            </h4>
+            <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+              {hasAnyPins
+                ? "Try zooming out or clicking 'Show All Pins' to see businesses in other areas."
+                : 'Be the first artisan or service provider to add your business to the map!'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            {hasAnyPins ? (
+              <>
+                <button
+                  onClick={handleFitAllPins}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/25 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>Show All Pins</span>
+                </button>
+
+                <button
+                  onClick={() => setRadiusKm(prev => Math.min(prev + 25, 100))}
+                  className="px-3.5 py-2 bg-transparent hover:bg-neutral-800/60 border border-neutral-700/80 text-neutral-200 text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Expand to {Math.min(radiusKm + 25, 100)}km
+                </button>
+
+                {currentUser && (
+                  <button
+                    onClick={() => setIsLocationModalOpen(true)}
+                    className="px-3.5 py-2 bg-transparent hover:bg-neutral-800/60 border border-neutral-700/80 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Add Your Business
+                  </button>
+                )}
+              </>
+            ) : (
+              currentUser && (
+                <button
+                  onClick={() => setIsLocationModalOpen(true)}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-lg shadow-emerald-500/25 transition cursor-pointer"
+                >
+                  + Add Business Pin
+                </button>
+              )
+            )}
           </div>
         </div>
       )}
