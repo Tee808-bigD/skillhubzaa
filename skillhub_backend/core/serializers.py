@@ -350,11 +350,6 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ['id', 'post', 'author', 'content', 'created_at', 'updated_at']
         read_only_fields = ['id', 'author', 'created_at', 'updated_at']
 
-    def create(self, validated_data):
-        # Automatically set author from request context
-        user = self.context['request'].user
-        return Comment.objects.create(author=user, **validated_data)
-
     def validate_content(self, value):
         """Sanitize comment content against XSS using bleach."""
         if not value:
@@ -458,9 +453,8 @@ class PostSerializer(serializers.ModelSerializer):
         return None
 
     def create(self, validated_data):
-        user = self.context['request'].user
-        
-        # Calculate media_type based on uploaded files
+        # Calculate media_type based on uploaded files. The author is supplied
+        # by the view (PostViewSet.perform_create) to keep one source of truth.
         if validated_data.get('video_file'):
             validated_data['media_type'] = 'video'
         elif validated_data.get('media_file'):
@@ -468,7 +462,7 @@ class PostSerializer(serializers.ModelSerializer):
         else:
             validated_data['media_type'] = 'text'
 
-        return Post.objects.create(author=user, **validated_data)
+        return super().create(validated_data)
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -503,9 +497,6 @@ class EventSerializer(serializers.ModelSerializer):
             return obj.attendees.filter(id=request.user.id).exists()
         return False
 
-    def create(self, validated_data):
-        user = self.context['request'].user
-        return Event.objects.create(organizer=user, **validated_data)
 
 
 class ServiceSerializer(serializers.ModelSerializer):
@@ -532,9 +523,6 @@ class ServiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'provider', 'created_at']
 
-    def create(self, validated_data):
-        user = self.context['request'].user
-        return Service.objects.create(provider=user, **validated_data)
 
 
 class ReelSerializer(serializers.ModelSerializer):
@@ -560,9 +548,6 @@ class ReelSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'author', 'created_at']
 
-    def create(self, validated_data):
-        user = self.context['request'].user
-        return Reel.objects.create(author=user, **validated_data)
 
 
 class MessageSerializer(serializers.ModelSerializer):

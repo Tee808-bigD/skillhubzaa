@@ -5,6 +5,7 @@ Fully hardened production & development configuration.
 """
 
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 
@@ -234,7 +235,13 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https:\/\/.*\.run\.app$",
     r"^https:\/\/.*\.google\.com$",
     r"^https:\/\/.*\.ngrok-free\.dev$",
+    r"^https:\/\/.*\.netlify\.app$",
 ]
+
+# Netlify deployment hosting the React app
+for netlify_origin in ['https://skillhubzaa.netlify.app']:
+    if netlify_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(netlify_origin)
 
 extra_cors = env('CORS_ALLOWED_ORIGINS', default='')
 if extra_cors:
@@ -249,6 +256,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.run.app',
     'https://*.google.com',
     'https://*.ngrok-free.dev',
+    'https://skillhubzaa.netlify.app',
+    'https://*.netlify.app',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
@@ -291,21 +300,43 @@ SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=False)
 REDIS_URL = env('REDIS_URL', default='')
 USE_REDIS_CHANNEL_LAYER = env.bool('USE_REDIS_CHANNEL_LAYER', default=False) or bool(REDIS_URL)
 
-if USE_REDIS_CHANNEL_LAYER:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                'hosts': [REDIS_URL or ('127.0.0.1', 6379)],
-            },
-        },
-    }
-else:
+# Tests always use the in-memory layer so a local test run never needs Redis.
+TESTING = 'test' in sys.argv
+
+if TESTING:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
     }
+elif USE_REDIS_CHANNEL_LAYER:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL or ('127.0.0.1', 6379)],
+                # Per-channel buffer and message TTL. 60s expiry means messages
+                # sent during a brief reconnect are not lost.
+                'capacity': env.int('CHANNEL_LAYER_CAPACITY', default=1500),
+                'expiry': env.int('CHANNEL_LAYER_EXPIRY', default=60),
+                'group_expiry': env.int('CHANNEL_LAYER_GROUP_EXPIRY', default=86400),
+            },
+        },
+    }
+elif DEBUG:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+else:
+    # Multiple ASGI workers cannot reach each other with an in-memory layer,
+    # so fail at startup instead of silently dropping messages in production.
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        'REDIS_URL (or USE_REDIS_CHANNEL_LAYER=True) is required when DEBUG=False. '
+        'Set it to a managed Redis instance so WebSocket messages reach all workers.'
+    )
 
 # ==============================================================================
 # DMCA & ECTA CHAPTER XI DESIGNATED COPYRIGHT AGENT

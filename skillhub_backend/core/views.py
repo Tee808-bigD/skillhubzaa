@@ -1,5 +1,7 @@
 from rest_framework import viewsets, permissions, status, filters, generics
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
+from django.db import connection
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -8,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.http import HttpResponse
 from .filters import UserFilter, PostFilter
+from .permissions import IsAuthorOrReadOnly
 
 def home_view(request):
     """
@@ -472,7 +475,7 @@ class PostViewSet(viewsets.ModelViewSet):
     Enforces ECTA Safe Harbor moderation exclusions and POPIA child/minor age restrictions.
     """
     serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PostFilter
@@ -490,6 +493,7 @@ class PostViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
+        # The view is the single source of truth for authorship.
         serializer.save(author=self.request.user)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
@@ -511,7 +515,9 @@ class PostViewSet(viewsets.ModelViewSet):
         return Response({
             'status': 'success',
             'is_liked': liked,
-            'likes_count': post.likes.count(),
+            # Query directly: ``post.likes`` is prefetched in get_queryset and
+            # would report a stale count immediately after the write above.
+            'likes_count': Like.objects.filter(post=post).count(),
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
@@ -535,9 +541,13 @@ class PostViewSet(viewsets.ModelViewSet):
             if not request.user.is_authenticated:
                 return Response({'detail': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
             
-            serializer = CommentSerializer(data=request.data, context={'request': request})
+            # On this nested route the post comes from the URL, so a client
+            # should not have to (and cannot) set it in the body.
+            payload = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            payload['post'] = post.pk
+            serializer = CommentSerializer(data=payload, context={'request': request})
             if serializer.is_valid():
-                serializer.save(post=post, author=request.user)
+                serializer.save(author=request.user)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -548,7 +558,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     queryset = Comment.objects.select_related('author', 'post').all()
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -569,7 +579,7 @@ class EventViewSet(viewsets.ModelViewSet):
     """
     queryset = Event.objects.select_related('organizer').prefetch_related('attendees').all()
     serializer_class = EventSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'description', 'location', 'category']
 
@@ -604,7 +614,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     """
     queryset = Service.objects.select_related('provider').all()
     serializer_class = ServiceSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'description', 'category', 'provider__username']
 
@@ -619,7 +629,7 @@ class ReelViewSet(viewsets.ModelViewSet):
     """
     queryset = Reel.objects.select_related('author').all()
     serializer_class = ReelSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['caption', 'audio_track', 'skills', 'author__username', 'author__first_name', 'author__last_name']
@@ -687,6 +697,8 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         """
         room = self.get_object()
         msgs = room.messages.select_related('sender').order_by('timestamp')
+        # Mark incoming messages as read now that the user has opened the room
+        msgs.exclude(sender=request.user).filter(is_read=False).update(is_read=True)
         serializer = MessageSerializer(msgs, many=True, context={'request': request})
         return Response(serializer.data)
 
@@ -711,11 +723,17 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
                 other_user = User.objects.get(pk=other_user_id)
             else:
                 other_user = User.objects.get(username=other_username)
-        except User.DoesNotExist:
+        except (User.DoesNotExist, ValueError, TypeError):
             return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        if other_user.pk == user.pk:
+            return Response(
+                {'detail': 'You cannot start a direct chat with yourself.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # Check if direct 1-on-1 room between these 2 users already exists
-        existing_rooms = ChatRoom.objects.filter(participants=user).filter(participants=other_user)
+        existing_rooms = ChatRoom.objects.filter(participants=user).filter(participants=other_user).distinct()
         for r in existing_rooms:
             if r.participants.count() == 2:
                 serializer = self.get_serializer(r)
@@ -747,7 +765,11 @@ class MessageViewSet(viewsets.ModelViewSet):
         return queryset.filter(Q(sender=user) | Q(receiver=user) | Q(room__participants=user)).distinct()
 
     def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
+        room = serializer.validated_data.get('room')
+        if room and not room.participants.filter(pk=self.request.user.pk).exists():
+            raise PermissionDenied('You are not a participant in this chat room.')
+        # MessageSerializer.create() attaches the authenticated sender itself.
+        serializer.save()
 
 
 # ==============================================================================
@@ -1173,4 +1195,41 @@ class BusinessLocationUpdateView(generics.GenericAPIView):
     patch = put
 
 
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def health_view(request):
+    """
+    Liveness/readiness probe: verifies the database and (when configured) Redis.
+    Returns 200 when both are reachable, 503 with per-dependency detail otherwise.
+    """
+    checks = {}
+    healthy = True
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+            cursor.fetchone()
+        checks['database'] = 'ok'
+    except Exception as exc:
+        checks['database'] = 'error'
+        healthy = False
+        logger.warning('[Health] Database check failed: %s', exc)
+
+    redis_url = getattr(settings, 'REDIS_URL', '')
+    if redis_url:
+        try:
+            import redis  # provided by channels-redis
+            redis.from_url(redis_url, socket_connect_timeout=2, socket_timeout=2).ping()
+            checks['redis'] = 'ok'
+        except Exception as exc:
+            checks['redis'] = 'error'
+            healthy = False
+            logger.warning('[Health] Redis check failed: %s', exc)
+    else:
+        checks['redis'] = 'not_configured'
+
+    return Response(
+        {'status': 'ok' if healthy else 'degraded', 'checks': checks},
+        status=status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
 

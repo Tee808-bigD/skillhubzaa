@@ -4,6 +4,7 @@ import { X, Image, Video, Calendar, Sparkles, Send, Upload } from 'lucide-react'
 import { AICaptionGenerator } from './AICaptionGenerator';
 import { FileUploadWithScan } from './FileUploadWithScan';
 import { createPost } from '../api/posts';
+import { extractDjangoErrorMessage } from '../api/client';
 
 interface CreatePostModalProps {
   currentUser: User;
@@ -28,6 +29,8 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [postHashtags, setPostHashtags] = useState('');
   const [postFile, setPostFile] = useState<File | null>(null);
   const [postFilePreview, setPostFilePreview] = useState<string | null>(null);
+  const [postError, setPostError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const modalFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Story form
@@ -95,10 +98,10 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       isLiked: true
     };
 
-    onAddPost(newPost);
-    onClose();
+    setIsSubmitting(true);
+    setPostError(null);
 
-    // Asynchronously sync with Django REST Framework API
+    // Persist to Django first; only show the post once the API confirms it.
     try {
       if (postFile) {
         const formData = new FormData();
@@ -121,8 +124,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           hashtags: hashtags.length > 0 ? hashtags : ['SkillHubZA']
         });
       }
-    } catch (err) {
-      console.warn('Backend sync failed, post saved locally:', err);
+      onAddPost(newPost);
+      onClose();
+    } catch (err: any) {
+      console.error('Failed to publish post:', err);
+      setPostError(extractDjangoErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -316,12 +324,18 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 />
               </div>
 
+              {postError && (
+                <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 text-[11px] text-rose-200">
+                  Could not publish: {postError}
+                </div>
+              )}
+
               <div className="pt-2 flex justify-end gap-3">
                 <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold text-neutral-400">
                   Cancel
                 </button>
-                <button type="submit" className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md">
-                  Publish Post
+                <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl shadow-md">
+                  {isSubmitting ? 'Publishing…' : 'Publish Post'}
                 </button>
               </div>
             </form>

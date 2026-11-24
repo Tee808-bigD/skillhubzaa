@@ -9,11 +9,22 @@ User = get_user_model()
 
 @database_sync_to_async
 def get_user_from_token(token):
+    """Return (user, reason). reason is None on success, else 'expired'/'invalid'/'inactive'."""
     try:
         access_token = AccessToken(token)
-        return User.objects.get(id=access_token['user_id'])
-    except Exception:
-        return AnonymousUser()
+    except Exception as exc:
+        # SimpleJWT raises TokenError('Token is expired') for stale tokens.
+        reason = 'expired' if 'expired' in str(exc).lower() else 'invalid'
+        return AnonymousUser(), reason
+
+    try:
+        user = User.objects.get(id=access_token['user_id'])
+    except User.DoesNotExist:
+        return AnonymousUser(), 'invalid'
+
+    if not user.is_active:
+        return AnonymousUser(), 'inactive'
+    return user, None
 
 
 class JwtAuthMiddleware:
@@ -31,9 +42,12 @@ class JwtAuthMiddleware:
         token = query_params.get('token', [None])[0]
 
         if token:
-            scope['user'] = await get_user_from_token(token)
+            user, reason = await get_user_from_token(token)
+            scope['user'] = user
+            scope['jwt_error'] = reason
         else:
             scope['user'] = AnonymousUser()
+            scope['jwt_error'] = 'missing'
 
         return await self.inner(scope, receive, send)
 

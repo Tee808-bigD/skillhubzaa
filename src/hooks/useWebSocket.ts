@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage, WebSocketPayload } from '../api/types';
-import { getAccessToken } from '../api/client';
+import { getAccessToken, refreshAccessToken } from '../api/client';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -24,6 +24,7 @@ export const useWebSocket = (
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const shouldReconnectRef = useRef<boolean>(true);
   const reconnectAttemptsRef = useRef<number>(0);
+  const didRefreshForAuthRef = useRef<boolean>(false);
 
   // Sync initial messages if provided
   useEffect(() => {
@@ -42,29 +43,32 @@ export const useWebSocket = (
     }
   }, [options?.initialMessages]);
 
-  // Determine WebSocket URL (Django Channels on port 8000 or current host)
+  // Determine WebSocket URL.
+  // The Django Channels host is derived from the configured API base URL, so
+  // remote deployments (ngrok / Render / local :8000) are reached directly.
   const getWebSocketUrl = useCallback((): string => {
     if (!roomId) return '';
-    const authToken = token || getAccessToken() || '';
+    // Prefer the freshest stored token so a refresh that happened after mount
+    // is used by the reconnect instead of a stale prop.
+    const authToken = getAccessToken() || token || '';
     const tokenQuery = authToken ? `?token=${encodeURIComponent(authToken)}` : '';
 
-    const customBase = typeof window !== 'undefined' ? localStorage.getItem('skillhub_custom_api_url') : null;
-    const isDirectDjango = !!(customBase && customBase.includes(':8000'));
+    const pageOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000';
+    const configuredApi =
+      import.meta.env.VITE_API_BASE_URL ||
+      (typeof window !== 'undefined' ? localStorage.getItem('skillhub_custom_api_url') : null) ||
+      '';
 
-    if (isDirectDjango || (typeof window !== 'undefined' && window.location.hostname === '127.0.0.1')) {
-      return `ws://127.0.0.1:8000/ws/chat/${roomId}/${tokenQuery}`;
-    }
+    // Only an absolute API URL tells us where Django lives; a relative /api/
+    // means the page itself is served alongside the ASGI app.
+    const base = configuredApi.startsWith('http') ? configuredApi : pageOrigin;
 
-    if (typeof window !== 'undefined') {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      // If VITE_API_BASE_URL is explicitly set to Django
-      if (import.meta.env.VITE_API_BASE_URL?.startsWith('http://127.0.0.1:8000')) {
-        return `ws://127.0.0.1:8000/ws/chat/${roomId}/${tokenQuery}`;
-      }
-      return `${protocol}//${window.location.host}/ws/chat/${roomId}/${tokenQuery}`;
-    }
+    const wsBase = base
+      .replace(/^http(s?):\/\//i, (_match: string, secure: string) => (secure ? 'wss://' : 'ws://'))
+      .replace(/\/api\/?$/i, '')
+      .replace(/\/$/, '');
 
-    return `ws://127.0.0.1:8000/ws/chat/${roomId}/${tokenQuery}`;
+    return `${wsBase}/ws/chat/${roomId}/${tokenQuery}`;
   }, [roomId, token]);
 
   const connect = useCallback(() => {
@@ -92,6 +96,7 @@ export const useWebSocket = (
       socket.onopen = () => {
         setConnectionStatus('connected');
         reconnectAttemptsRef.current = 0;
+        didRefreshForAuthRef.current = false;
         setError(null);
       };
 
@@ -146,20 +151,42 @@ export const useWebSocket = (
         setError('WebSocket error connecting to Django Channels');
       };
 
-      socket.onclose = (event) => {
+      socket.onclose = async (event) => {
         setConnectionStatus('disconnected');
         socketRef.current = null;
 
-        // Auto-reconnect with exponential backoff if intended
-        if (shouldReconnectRef.current && event.code !== 4003) {
-          const maxDelay = 10000;
-          const delay = Math.min(1000 * Math.pow(1.5, reconnectAttemptsRef.current), maxDelay);
-          reconnectAttemptsRef.current += 1;
+        if (!shouldReconnectRef.current) return;
 
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, delay);
+        // 4003 = authenticated but not allowed in this room: do not retry.
+        if (event.code === 4003) {
+          setError('You do not have access to this conversation.');
+          return;
         }
+
+        // 4001 = missing/expired JWT: refresh once, then reconnect.
+        if (event.code === 4001) {
+          if (didRefreshForAuthRef.current) {
+            setError('Your session expired. Please log in again.');
+            return;
+          }
+          didRefreshForAuthRef.current = true;
+          const newAccess = await refreshAccessToken();
+          if (!newAccess) {
+            setError('Your session expired. Please log in again.');
+            return;
+          }
+          connect();
+          return;
+        }
+
+        // Auto-reconnect with exponential backoff for transient drops.
+        const maxDelay = 10000;
+        const delay = Math.min(1000 * Math.pow(1.5, reconnectAttemptsRef.current), maxDelay);
+        reconnectAttemptsRef.current += 1;
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connect();
+        }, delay);
       };
     } catch (connectionErr: any) {
       setConnectionStatus('error');

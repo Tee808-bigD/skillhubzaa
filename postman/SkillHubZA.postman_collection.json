@@ -1,0 +1,888 @@
+{
+  "info": {
+    "name": "SkillHub ZA API",
+    "description": "End-to-end API checks for the SkillHub ZA Django backend: health, auth, posts, comments, likes, chat rooms, messages, authorisation boundaries and CORS.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "apiUrl", "value": "http://127.0.0.1:8000/api" },
+    { "key": "adminUser", "value": "admin" },
+    { "key": "adminPass", "value": "skillhubadmin2026" },
+    { "key": "probePass", "value": "Postman!2026Probe" },
+    { "key": "probeUser", "value": "" },
+    { "key": "probe2User", "value": "" },
+    { "key": "access", "value": "" },
+    { "key": "refresh", "value": "" },
+    { "key": "probeAccess", "value": "" },
+    { "key": "probe2Access", "value": "" },
+    { "key": "postId", "value": "" },
+    { "key": "post2Id", "value": "" },
+    { "key": "roomId", "value": "" },
+    { "key": "messageId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Smoke",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('database check is ok', () => pm.expect(b.checks.database).to.eql('ok'));",
+                  "pm.test('overall status ok', () => pm.expect(b.status).to.eql('ok'));",
+                  "pm.test('has a redis check entry', () => pm.expect(b.checks).to.have.property('redis'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{apiUrl}}/health/", "host": ["{{apiUrl}}"], "path": ["health", ""] }
+          }
+        },
+        {
+          "name": "Posts list (public)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "const list = Array.isArray(b) ? b : b.results;",
+                  "pm.test('returns a JSON list', () => pm.expect(list).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{apiUrl}}/posts/", "host": ["{{apiUrl}}"], "path": ["posts", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Auth",
+      "item": [
+        {
+          "name": "Register probe user",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const u = 'pm_probe_' + Date.now();",
+                  "pm.collectionVariables.set('probeUser', u);",
+                  "console.log('probe user: ' + u);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('returns access + refresh tokens', () => {",
+                  "  pm.expect(b.access).to.be.a('string').and.not.empty;",
+                  "  pm.expect(b.refresh).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('username echoes back', () => pm.expect(b.user.username).to.eql(pm.collectionVariables.get('probeUser')));",
+                  "pm.collectionVariables.set('probeAccess', b.access);",
+                  "pm.collectionVariables.set('refresh', b.refresh);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{probeUser}}\",\n  \"email\": \"{{probeUser}}@example.com\",\n  \"password\": \"{{probePass}}\",\n  \"confirm_password\": \"{{probePass}}\",\n  \"role\": \"youth\",\n  \"date_of_birth\": \"2000-01-01\"\n}"
+            },
+            "url": { "raw": "{{apiUrl}}/auth/register/", "host": ["{{apiUrl}}"], "path": ["auth", "register", ""] }
+          }
+        },
+        {
+          "name": "Register duplicate username -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('username error reported', () => pm.expect(JSON.stringify(b).toLowerCase()).to.include('username'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{probeUser}}\",\n  \"email\": \"dup-{{probeUser}}@example.com\",\n  \"password\": \"{{probePass}}\",\n  \"confirm_password\": \"{{probePass}}\",\n  \"role\": \"youth\",\n  \"date_of_birth\": \"2000-01-01\"\n}"
+            },
+            "url": { "raw": "{{apiUrl}}/auth/register/", "host": ["{{apiUrl}}"], "path": ["auth", "register", ""] }
+          }
+        },
+        {
+          "name": "Register probe user 2 (outsider)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const u = 'pm_out_' + Date.now();",
+                  "pm.collectionVariables.set('probe2User', u);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('probe2Access', b.access);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{probe2User}}\",\n  \"email\": \"{{probe2User}}@example.com\",\n  \"password\": \"{{probePass}}\",\n  \"confirm_password\": \"{{probePass}}\",\n  \"role\": \"youth\",\n  \"date_of_birth\": \"2000-01-01\"\n}"
+            },
+            "url": { "raw": "{{apiUrl}}/auth/register/", "host": ["{{apiUrl}}"], "path": ["auth", "register", ""] }
+          }
+        },
+        {
+          "name": "Token obtain (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('access token returned', () => pm.expect(b.access).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('access', b.access);",
+                  "pm.collectionVariables.set('refresh', b.refresh);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUser}}\",\n  \"password\": \"{{adminPass}}\"\n}"
+            },
+            "url": { "raw": "{{apiUrl}}/token/", "host": ["{{apiUrl}}"], "path": ["token", ""] }
+          }
+        },
+        {
+          "name": "Token obtain (wrong password) -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUser}}\",\n  \"password\": \"definitely-not-the-password\"\n}"
+            },
+            "url": { "raw": "{{apiUrl}}/token/", "host": ["{{apiUrl}}"], "path": ["token", ""] }
+          }
+        },
+        {
+          "name": "Token refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('new access token returned', () => pm.expect(pm.response.json().access).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refresh\": \"{{refresh}}\"\n}" },
+            "url": { "raw": "{{apiUrl}}/token/refresh/", "host": ["{{apiUrl}}"], "path": ["token", "refresh", ""] }
+          }
+        },
+        {
+          "name": "Users/me (authenticated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('returns the token owner', () => pm.expect(b.username).to.eql(pm.collectionVariables.get('adminUser')));",
+                  "pm.test('never exposes password material', () => {",
+                  "  pm.expect(JSON.stringify(b)).to.not.include('pbkdf2_');",
+                  "  pm.expect(b).to.not.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access}}" }],
+            "url": { "raw": "{{apiUrl}}/users/me/", "host": ["{{apiUrl}}"], "path": ["users", "me", ""] }
+          }
+        },
+        {
+          "name": "Users/me without token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{apiUrl}}/users/me/", "host": ["{{apiUrl}}"], "path": ["users", "me", ""] }
+          }
+        },
+        {
+          "name": "Users/me with malformed token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer not.a.real.token" }],
+            "url": { "raw": "{{apiUrl}}/users/me/", "host": ["{{apiUrl}}"], "path": ["users", "me", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Feed (posts, likes, comments)",
+      "item": [
+        {
+          "name": "Create post (unauthenticated) -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"anonymous post attempt\"\n}" },
+            "url": { "raw": "{{apiUrl}}/posts/", "host": ["{{apiUrl}}"], "path": ["posts", ""] }
+          }
+        },
+        {
+          "name": "Create post with empty content -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('content error reported', () => pm.expect(JSON.stringify(pm.response.json())).to.include('content'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"\"\n}" },
+            "url": { "raw": "{{apiUrl}}/posts/", "host": ["{{apiUrl}}"], "path": ["posts", ""] }
+          }
+        },
+        {
+          "name": "Create post (authenticated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('author is the authenticated user', () => pm.expect(b.author.username).to.eql(pm.collectionVariables.get('probeUser')));",
+                  "pm.test('body is echoed', () => pm.expect(b.content).to.include('Postman smoke test'));",
+                  "pm.collectionVariables.set('postId', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Postman smoke test - safe to delete\",\n  \"category\": \"General\",\n  \"hashtags\": \"#postman #api\"\n}"
+            },
+            "url": { "raw": "{{apiUrl}}/posts/", "host": ["{{apiUrl}}"], "path": ["posts", ""] }
+          }
+        },
+        {
+          "name": "Get post by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('same post id', () => pm.expect(String(pm.response.json().id)).to.eql(String(pm.collectionVariables.get('postId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{apiUrl}}/posts/{{postId}}/", "host": ["{{apiUrl}}"], "path": ["posts", "{{postId}}", ""] }
+          }
+        },
+        {
+          "name": "Toggle like on post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('liked state reported', () => pm.expect(b.is_liked).to.eql(true));",
+                  "pm.test('likes_count is at least 1', () => pm.expect(b.likes_count).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{probeAccess}}" }],
+            "url": { "raw": "{{apiUrl}}/posts/{{postId}}/toggle_like/", "host": ["{{apiUrl}}"], "path": ["posts", "{{postId}}", "toggle_like", ""] }
+          }
+        },
+        {
+          "name": "Comment on post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('comment content persisted', () => pm.expect(b.content).to.eql('Postman comment'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Postman comment\"\n}" },
+            "url": { "raw": "{{apiUrl}}/posts/{{postId}}/comments/", "host": ["{{apiUrl}}"], "path": ["posts", "{{postId}}", "comments", ""] }
+          }
+        },
+        {
+          "name": "List comments on post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('comment is listed', () => pm.expect(b.some(c => c.content === 'Postman comment')).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{apiUrl}}/posts/{{postId}}/comments/", "host": ["{{apiUrl}}"], "path": ["posts", "{{postId}}", "comments", ""] }
+          }
+        },
+        {
+          "name": "Create second post (ownership test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('post2Id', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Postman ownership check - safe to delete\"\n}" },
+            "url": { "raw": "{{apiUrl}}/posts/", "host": ["{{apiUrl}}"], "path": ["posts", ""] }
+          }
+        },
+        {
+          "name": "Non-staff outsider deletes someone else's post -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('third party cannot delete another user\\'s post (403)', () => {",
+                  "  pm.expect(pm.response.code, 'got ' + pm.response.code + ' - any authenticated user can delete any post').to.eql(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{probe2Access}}" }],
+            "url": { "raw": "{{apiUrl}}/posts/{{post2Id}}/", "host": ["{{apiUrl}}"], "path": ["posts", "{{post2Id}}", ""] }
+          }
+        },
+        {
+          "name": "Delete own post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 204', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{probeAccess}}" }],
+            "url": { "raw": "{{apiUrl}}/posts/{{postId}}/", "host": ["{{apiUrl}}"], "path": ["posts", "{{postId}}", ""] }
+          }
+        },
+        {
+          "name": "Deleted post -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{apiUrl}}/posts/{{postId}}/", "host": ["{{apiUrl}}"], "path": ["posts", "{{postId}}", ""] }
+          }
+        },
+        {
+          "name": "Missing post -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{apiUrl}}/posts/99999999/", "host": ["{{apiUrl}}"], "path": ["posts", "99999999", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Chat",
+      "item": [
+        {
+          "name": "Rooms list (unauthenticated) -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{apiUrl}}/rooms/", "host": ["{{apiUrl}}"], "path": ["rooms", ""] }
+          }
+        },
+        {
+          "name": "Start direct chat with admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('room created or reused (200/201)', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                  "const b = pm.response.json();",
+                  "pm.test('room has an id', () => pm.expect(b.id).to.exist);",
+                  "pm.test('both participants present', () => pm.expect(b.participants.length).to.eql(2));",
+                  "pm.collectionVariables.set('roomId', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"participant_username\": \"{{adminUser}}\"\n}" },
+            "url": { "raw": "{{apiUrl}}/rooms/direct/", "host": ["{{apiUrl}}"], "path": ["rooms", "direct", ""] }
+          }
+        },
+        {
+          "name": "Direct chat with self -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"participant_username\": \"{{probeUser}}\"\n}" },
+            "url": { "raw": "{{apiUrl}}/rooms/direct/", "host": ["{{apiUrl}}"], "path": ["rooms", "direct", ""] }
+          }
+        },
+        {
+          "name": "Direct chat with unknown user -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"participant_username\": \"nobody_here_xyz\"\n}" },
+            "url": { "raw": "{{apiUrl}}/rooms/direct/", "host": ["{{apiUrl}}"], "path": ["rooms", "direct", ""] }
+          }
+        },
+        {
+          "name": "Rooms list contains the new room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "const list = Array.isArray(b) ? b : b.results;",
+                  "pm.test('new room is in the list', () => pm.expect(list.some(r => String(r.id) === String(pm.collectionVariables.get('roomId')))).to.eql(true));",
+                  "pm.test('room exposes last_message/unread_count fields', () => { const r = list.find(x => String(x.id) === String(pm.collectionVariables.get('roomId'))); pm.expect(r).to.have.property('last_message'); pm.expect(r).to.have.property('unread_count'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{probeAccess}}" }],
+            "url": { "raw": "{{apiUrl}}/rooms/", "host": ["{{apiUrl}}"], "path": ["rooms", ""] }
+          }
+        },
+        {
+          "name": "Send message to room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('message body persisted', () => pm.expect(b.content).to.eql('Hello from the Postman collection'));",
+                  "pm.collectionVariables.set('messageId', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room_id\": \"{{roomId}}\",\n  \"content\": \"Hello from the Postman collection\"\n}"
+            },
+            "url": { "raw": "{{apiUrl}}/messages/", "host": ["{{apiUrl}}"], "path": ["messages", ""] }
+          }
+        },
+        {
+          "name": "Message with empty content -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('empty message rejected (400/422)', () => pm.expect([400, 422]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probeAccess}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"room_id\": \"{{roomId}}\",\n  \"content\": \"\"\n}" },
+            "url": { "raw": "{{apiUrl}}/messages/", "host": ["{{apiUrl}}"], "path": ["messages", ""] }
+          }
+        },
+        {
+          "name": "Room history (as admin, marks read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('message appears in room history', () => pm.expect(b.some(m => m.content === 'Hello from the Postman collection')).to.eql(true));",
+                  "pm.test('incoming message is marked read', () => {",
+                  "  const m = b.find(x => x.content === 'Hello from the Postman collection');",
+                  "  pm.expect(m.is_read).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access}}" }],
+            "url": { "raw": "{{apiUrl}}/rooms/{{roomId}}/messages/", "host": ["{{apiUrl}}"], "path": ["rooms", "{{roomId}}", "messages", ""] }
+          }
+        },
+        {
+          "name": "Outsider reads room -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('non-participant cannot fetch room (404)', () => pm.expect(pm.response.code).to.eql(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{probe2Access}}" }],
+            "url": { "raw": "{{apiUrl}}/rooms/{{roomId}}/", "host": ["{{apiUrl}}"], "path": ["rooms", "{{roomId}}", ""] }
+          }
+        },
+        {
+          "name": "Outsider sends message into room -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('non-participant cannot post into the room (403)', () => pm.expect(pm.response.code).to.eql(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{probe2Access}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"room_id\": \"{{roomId}}\",\n  \"content\": \"I should not be allowed here\"\n}" },
+            "url": { "raw": "{{apiUrl}}/messages/", "host": ["{{apiUrl}}"], "path": ["messages", ""] }
+          }
+        },
+        {
+          "name": "Messages filtered by room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "const list = Array.isArray(b) ? b : b.results;",
+                  "pm.test('only returns messages from this room', () => {",
+                  "  pm.expect(list.length).to.be.at.least(1);",
+                  "  pm.expect(list.every(m => String(m.room) === String(pm.collectionVariables.get('roomId')))).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{probeAccess}}" }],
+            "url": {
+              "raw": "{{apiUrl}}/messages/?room_id={{roomId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["messages", ""],
+              "query": [{ "key": "room_id", "value": "{{roomId}}" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - CORS / deployment",
+      "item": [
+        {
+          "name": "CORS preflight from Netlify origin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('preflight accepted (200)', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const allow = pm.response.headers.get('Access-Control-Allow-Origin');",
+                  "pm.test('allow-origin echoes the site or is *', () => pm.expect(allow === 'https://skillhubzaa.netlify.app' || allow === '*').to.eql(true));",
+                  "pm.test('credentials are allowed', () => pm.expect((pm.response.headers.get('Access-Control-Allow-Credentials') || '').toLowerCase()).to.eql('true'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              { "key": "Origin", "value": "https://skillhubzaa.netlify.app" },
+              { "key": "Access-Control-Request-Method", "value": "POST" },
+              { "key": "Access-Control-Request-Headers", "value": "authorization,content-type" }
+            ],
+            "url": { "raw": "{{apiUrl}}/token/", "host": ["{{apiUrl}}"], "path": ["token", ""] }
+          }
+        },
+        {
+          "name": "CORS preflight from localhost:5173 (dev server)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = pm.response.headers.get('Access-Control-Allow-Origin');",
+                  "pm.test('dev origin is allowed', () => pm.expect(allow === 'http://localhost:5173' || allow === '*').to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              { "key": "Origin", "value": "http://localhost:5173" },
+              { "key": "Access-Control-Request-Method", "value": "GET" }
+            ],
+            "url": { "raw": "{{apiUrl}}/posts/", "host": ["{{apiUrl}}"], "path": ["posts", ""] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -105,6 +105,48 @@ export const isUserLoggedIn = (): boolean => {
   return !!getAccessToken();
 };
 
+// Single-flight token refresh: concurrent 401s (or a 4001 WebSocket close)
+// share one refresh request instead of racing each other.
+let refreshPromise: Promise<string | null> | null = null;
+
+export const refreshAccessToken = (): Promise<string | null> => {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const token = getRefreshToken();
+      const res = await axios.post<{ access: string; refresh?: string }>(
+        `${API_BASE_URL}token/refresh/`,
+        token ? { refresh: token } : {},
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+          },
+          withCredentials: true,
+          timeout: 10000,
+        }
+      );
+
+      if (!res.data?.access) return null;
+      const isRemembered = localStorage.getItem(REMEMBER_ME_KEY) === 'true';
+      setTokens(res.data.access, res.data.refresh, isRemembered);
+      return res.data.access;
+    } catch {
+      clearTokens();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+      }
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
 /**
  * Request Interceptor:
  * 1. Attaches JWT Bearer Token.
@@ -164,34 +206,12 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refreshToken = getRefreshToken();
-
-      try {
-        // Post to token refresh endpoint with credentials (supporting both HttpOnly cookie and body)
-        const payload = refreshToken ? { refresh: refreshToken } : {};
-        const res = await axios.post<{ access: string; refresh?: string }>(
-          `${API_BASE_URL}token/refresh/`,
-          payload,
-          {
-            headers: { 'Content-Type': 'application/json' },
-            withCredentials: true,
-          }
-        );
-
-        if (res.data?.access) {
-          const isRemembered = localStorage.getItem(REMEMBER_ME_KEY) === 'true';
-          setTokens(res.data.access, res.data.refresh, isRemembered);
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
-          }
-          return apiClient(originalRequest);
+      const newAccess = await refreshAccessToken();
+      if (newAccess) {
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newAccess}`;
         }
-      } catch (refreshErr) {
-        // Refresh token expired or blacklisted: clear session
-        clearTokens();
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('auth:logout'));
-        }
+        return apiClient(originalRequest);
       }
     }
 

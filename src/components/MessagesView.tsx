@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ChatConversation, ChatMessage, User } from '../types';
 import { 
   Send, 
@@ -37,7 +37,11 @@ import {
 } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { getAccessToken } from '../api/client';
+import { getChatRooms } from '../api/chat';
+import type { ChatRoom as ApiChatRoom } from '../api/types';
 import { ChatWindow } from './ChatWindow';
+
+const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80';
 
 interface MessagesViewProps {
   conversations: ChatConversation[];
@@ -141,17 +145,67 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showDedicatedChatWindow, setShowDedicatedChatWindow] = useState(false);
 
-  const activeConversation = conversations.find(c => c.id === selectedChatId) || conversations[0];
   const token = getAccessToken();
 
+  // Live conversations from the Django backend (/api/rooms/)
+  const [liveRooms, setLiveRooms] = useState<ApiChatRoom[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+    let isMounted = true;
+    getChatRooms()
+      .then((rooms) => {
+        if (isMounted) setLiveRooms(rooms);
+      })
+      .catch((err) => console.warn('Could not load Django chat rooms:', err));
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
+  const currentUsername = currentUser.handle.replace(/^@/, '');
+
+  const liveConversations = useMemo<ChatConversation[]>(() => {
+    return liveRooms.map((room) => {
+      const other = (room.participants || []).find(p => p.username !== currentUsername)
+        || (room.participants || [])[0];
+      const lastAt = room.last_message?.timestamp;
+      return {
+        id: String(room.id),
+        participantId: other ? String(other.id) : '',
+        participantName: other?.full_name || other?.username || room.name || `Chat Room #${room.id}`,
+        participantHandle: other?.username ? `@${other.username}` : '',
+        participantAvatar: other?.avatar || FALLBACK_AVATAR,
+        online: false,
+        lastMessage: room.last_message?.content || 'No messages yet. Say hello!',
+        lastMessageTime: lastAt
+          ? new Date(lastAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : '',
+        unreadCount: room.unread_count || 0,
+        messages: []
+      };
+    });
+  }, [liveRooms, currentUsername]);
+
+  // Real Django rooms take priority over the same local/mock conversation ids
+  const allConversations = useMemo(() => {
+    const liveIds = new Set(liveConversations.map(c => c.id));
+    return [...liveConversations, ...conversations.filter(c => !liveIds.has(c.id))];
+  }, [liveConversations, conversations]);
+
+  const activeConversation = allConversations.find(c => c.id === selectedChatId) || allConversations[0];
+  const activeLiveRoom = liveRooms.find(r => String(r.id) === String(activeConversation?.id));
+  const isLiveConversation = !!activeLiveRoom;
+
   // Django Channels WebSocket Integration
+  // Live rooms run their own socket inside ChatWindow, so don't open a second one here.
   const {
     sendMessage: sendWsMessage,
     sendTyping: sendWsTyping,
     connectionStatus: wsStatus,
     isTyping: wsIsTyping,
     typingUser: wsTypingUser
-  } = useWebSocket(activeConversation?.id, token, {
+  } = useWebSocket(isLiveConversation ? null : activeConversation?.id, token, {
     onMessageReceived: (incoming) => {
       if (!activeConversation) return;
       setLocalMessagesOverride(prev => {
@@ -226,7 +280,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
 
   useEffect(() => {
     if (activeChatParticipantName) {
-      const match = conversations.find(c => 
+      const match = allConversations.find(c => 
         c.participantName.toLowerCase() === activeChatParticipantName.toLowerCase()
       );
       if (match) {
@@ -234,7 +288,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
         setMobileShowChat(true);
       }
     }
-  }, [activeChatParticipantName, conversations]);
+  }, [activeChatParticipantName, allConversations]);
 
   const currentChatMessages = localMessagesOverride[activeConversation?.id] || activeConversation?.messages || [];
 
@@ -470,7 +524,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
     showToast(`Downloaded chat as ${format.toUpperCase()}`);
   };
 
-  const filteredConversations = conversations.filter(c =>
+  const filteredConversations = allConversations.filter(c =>
     c.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.participantHandle.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -747,7 +801,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
           <div className="flex items-center justify-between">
             <h2 className="font-black text-white text-lg">Direct Messages</h2>
             <span className="bg-emerald-500/20 text-emerald-400 text-xs font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-              {conversations.length} Active
+              {allConversations.length} Active
             </span>
           </div>
 
@@ -840,7 +894,32 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
       {/* Right Column: Active Conversation Area */}
       {activeConversation ? (
         <div className={`md:col-span-8 flex flex-col h-full min-h-0 bg-[#181818] relative overflow-hidden ${mobileShowChat ? 'flex' : 'hidden md:flex'}`}>
-          
+          {isLiveConversation && activeLiveRoom ? (
+            /* Real-time Django Channels room: history, persistence and websocket handled by ChatWindow */
+            <div className="flex-1 min-h-0 p-3 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileShowChat(false)}
+                className="md:hidden self-start flex items-center gap-1 text-[11px] font-bold text-neutral-400 hover:text-white px-2 py-1 rounded-lg hover:bg-neutral-800 transition"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>All chats</span>
+              </button>
+              <div className="flex-1 min-h-0 flex">
+              <ChatWindow
+                room={activeLiveRoom}
+                currentUser={{
+                  id: currentUser.id,
+                  username: currentUsername,
+                  name: currentUser.name,
+                  avatar: currentUser.avatar
+                }}
+                onOpenProfile={onOpenProfile}
+              />
+              </div>
+            </div>
+          ) : (
+          <>
           {/* Chat Room Header */}
           <div className="p-3.5 px-4 sm:px-5 bg-[#141414] border-b border-neutral-800 flex items-center justify-between z-10 shrink-0">
             <div className="flex items-center gap-2.5">
@@ -1220,6 +1299,8 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               </button>
             </div>
           </form>
+          </>
+          )}
 
         </div>
       ) : (

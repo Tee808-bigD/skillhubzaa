@@ -7,6 +7,10 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
+  # Current public Django backend. Replace with a permanent deployment
+  # (Render/Railway/Fly) when available; a Netlify dashboard variable with
+  # the same name overrides this value.
+  VITE_API_BASE_URL = "https://engrainedly-subinvolute-silvana.ngrok-free.dev/api/"
 
 # SPA Fallback: Direct all browser routes to index.html with 200 OK
 [[redirects]]

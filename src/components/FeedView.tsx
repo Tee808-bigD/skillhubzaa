@@ -8,6 +8,7 @@ import { TopRatedProfessionals } from './TopRatedProfessionals';
 import { Composer, ComposerSubmitData } from './Composer';
 import { RightWidgets } from './RightWidgets';
 import { getPosts, createPost, toggleLikePost, addComment } from '../api/posts';
+import { extractDjangoErrorMessage } from '../api/client';
 import { PostData } from '../api/types';
 import { 
   ThumbsUp, 
@@ -140,16 +141,17 @@ export const FeedView: React.FC<FeedViewProps> = ({
   const [copiedEmbed, setCopiedEmbed] = useState(false);
 
   // Django REST Framework Live Posts & API State
-  const [apiPosts, setApiPosts] = useState<SocialPost[]>(posts);
+  const [apiPosts, setApiPosts] = useState<SocialPost[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState<boolean>(false);
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
-  const [postsSource, setPostsSource] = useState<'django' | 'cached'>('cached');
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [postsSource, setPostsSource] = useState<'django' | 'cached' | 'error'>('cached');
 
   const fetchPostsFromApi = async () => {
     setIsLoadingPosts(true);
     try {
       const data = await getPosts();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         const mapped: SocialPost[] = data.map((p: any) => ({
           id: p.id,
           authorId: p.author?.id || currentUser.id,
@@ -170,13 +172,13 @@ export const FeedView: React.FC<FeedViewProps> = ({
         }));
         setApiPosts(mapped);
         setPostsSource('django');
-      } else {
-        setApiPosts(posts);
+        setFeedError(null);
       }
-    } catch (err) {
-      console.warn('Connecting to API fallback:', err);
-      setApiPosts(posts);
-      setPostsSource('cached');
+    } catch (err: any) {
+      // Do NOT substitute mock/local posts: a failed backend must be visible.
+      console.error('Failed to load posts from Django:', err);
+      setFeedError(extractDjangoErrorMessage(err));
+      setPostsSource('error');
     } finally {
       setIsLoadingPosts(false);
     }
@@ -185,12 +187,6 @@ export const FeedView: React.FC<FeedViewProps> = ({
   useEffect(() => {
     fetchPostsFromApi();
   }, []);
-
-  useEffect(() => {
-    if (apiPosts.length === 0 && posts.length > 0) {
-      setApiPosts(posts);
-    }
-  }, [posts]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -384,36 +380,18 @@ export const FeedView: React.FC<FeedViewProps> = ({
       setApiPosts(prev => [formattedPost, ...prev]);
       onAddPost(formattedPost);
       showToast('Post & file uploaded to Django REST Framework! 🚀');
-    } catch (err: any) {
-      console.warn('API post creation failed, falling back to local optimistic post:', err);
-      const fallbackUrl = filePreviewUrl || composerMediaUrl || undefined;
-      const fallbackPost: SocialPost = {
-        id: `post_${Date.now()}`,
-        authorId: currentUser.id,
-        authorName: currentUser.name,
-        authorHandle: currentUser.handle,
-        authorAvatar: currentUser.avatar,
-        authorLocation: currentUser.location,
-        createdAt: 'Just now',
-        content: composerText.trim() || 'Shared a media update with the community.',
-        hashtags: hashtags.length > 0 ? hashtags : ['SkillHub', 'YouthWorker'],
-        mediaType: isVideo ? 'video' : (fallbackUrl ? 'image' : undefined),
-        mediaUrl: fallbackUrl,
-        likesCount: 0,
-        commentsCount: 0,
-        sharesCount: 0,
-        isLiked: false
-      };
-      setApiPosts(prev => [fallbackPost, ...prev]);
-      onAddPost(fallbackPost);
-      showToast('Post saved locally.');
-    } finally {
-      setIsPublishing(false);
       setComposerText('');
       setComposerMediaUrl('');
       setComposerHashtags('');
       handleClearSelectedFile();
       setShowMediaInput(false);
+    } catch (err: any) {
+      // Surface the failure and keep the user's draft instead of faking a post.
+      console.error('Failed to publish post:', err);
+      showToast(`Could not publish: ${extractDjangoErrorMessage(err)} Your draft was kept.`);
+      throw err;
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -489,34 +467,8 @@ export const FeedView: React.FC<FeedViewProps> = ({
       onAddPost(formattedPost);
       showToast(data.postType === 'service_request' ? 'Service request published globally! 🚀' : 'Project showcased to global feed! 🌟');
     } catch (err: any) {
-      console.warn('API post creation fallback:', err);
-      const mediaDisplayUrl = data.mediaFile ? URL.createObjectURL(data.mediaFile) : data.mediaUrl;
-      const fallbackPost: SocialPost = {
-        id: `post_${Date.now()}`,
-        authorId: currentUser.id,
-        authorName: currentUser.name,
-        authorHandle: currentUser.handle,
-        authorAvatar: currentUser.avatar,
-        authorLocation: currentUser.location,
-        authorCountry: currentUser.country || 'Worldwide 🌐',
-        authorRating: 4.95,
-        authorVerified: true,
-        authorPrimarySkill: currentUser.primarySkill || currentUser.skills?.[0] || 'Professional Expert',
-        createdAt: 'Just now',
-        content: data.content,
-        hashtags: data.hashtags.length > 0 ? data.hashtags : ['SkillHubGlobal'],
-        mediaType: data.mediaFile?.type.startsWith('video/') ? 'video' : (mediaDisplayUrl ? 'image' : undefined),
-        mediaUrl: mediaDisplayUrl,
-        likesCount: 0,
-        commentsCount: 0,
-        sharesCount: 0,
-        isLiked: false,
-        postType: data.postType,
-        serviceRequest: data.serviceRequest
-      };
-      setApiPosts(prev => [fallbackPost, ...prev]);
-      onAddPost(fallbackPost);
-      showToast(data.postType === 'service_request' ? 'Service request saved locally.' : 'Showcase saved locally.');
+      console.error('Failed to publish post:', err);
+      showToast(`Could not publish: ${extractDjangoErrorMessage(err)}`);
     } finally {
       setIsPublishing(false);
     }
@@ -601,7 +553,7 @@ export const FeedView: React.FC<FeedViewProps> = ({
               Live Community Feed
             </span>
             <span className="text-[10px] text-slate-500 font-mono">
-              ({(apiPosts.length > 0 ? apiPosts : posts).length} posts)
+              ({apiPosts.length} posts)
             </span>
           </div>
           <button
@@ -617,7 +569,32 @@ export const FeedView: React.FC<FeedViewProps> = ({
 
         {/* Posts Stream */}
         <div className="space-y-6">
-          {(apiPosts.length > 0 ? apiPosts : posts).map((post) => (
+          {feedError && (
+            <div className="flex items-start gap-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4">
+              <Info className="w-4 h-4 mt-0.5 shrink-0 text-rose-300" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-rose-100">Couldn't load the live feed</p>
+                <p className="text-[12px] text-rose-200/80 mt-0.5 break-words">{feedError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchPostsFromApi}
+                disabled={isLoadingPosts}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-100 text-[11px] font-bold transition disabled:opacity-50"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {!isLoadingPosts && !feedError && apiPosts.length === 0 && (
+            <div className="bg-[#1e1e1e] rounded-3xl border border-neutral-800 p-10 text-center space-y-2">
+              <p className="text-sm font-bold text-slate-200">No posts yet</p>
+              <p className="text-xs text-slate-500">Be the first to share something with the community.</p>
+            </div>
+          )}
+
+          {apiPosts.map((post) => (
             <article
               key={post.id}
               className="bg-[#1e1e1e] rounded-3xl border border-neutral-800 shadow-xl overflow-hidden"

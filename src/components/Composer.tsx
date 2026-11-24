@@ -79,20 +79,25 @@ export const Composer: React.FC<ComposerProps> = ({
       .map(t => t.trim().replace(/^#/, ''))
       .filter(Boolean);
 
-    await onSubmit({
-      content: content.trim(),
-      postType: mode,
-      mediaFile: selectedFile,
-      mediaUrl: mediaUrlInput.trim() || undefined,
-      hashtags: parsedHashtags,
-      serviceRequest: mode === 'service_request' ? {
-        budget: budget.trim() || '$500 - $1,500',
-        deadline: deadline.trim() || 'Flexible',
-        preferredRegion: preferredRegion
-      } : undefined
-    });
+    try {
+      await onSubmit({
+        content: content.trim(),
+        postType: mode,
+        mediaFile: selectedFile,
+        mediaUrl: mediaUrlInput.trim() || undefined,
+        hashtags: parsedHashtags,
+        serviceRequest: mode === 'service_request' ? {
+          budget: budget.trim() || '$500 - $1,500',
+          deadline: deadline.trim() || 'Flexible',
+          preferredRegion: preferredRegion
+        } : undefined
+      });
+    } catch {
+      // The parent surfaces the API error; keep the draft so it can be retried.
+      return;
+    }
 
-    // Reset Form
+    // Reset Form only after a successful publish
     setContent('');
     setHashtags('');
     setBudget('');

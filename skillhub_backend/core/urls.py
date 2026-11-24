@@ -23,6 +23,7 @@ from .views import (
     SavedCourseViewSet,
     MapPinsListView,
     BusinessLocationUpdateView,
+    health_view,
 )
 
 router = DefaultRouter()
@@ -55,5 +56,6 @@ urlpatterns = [
     path('users/business-location/', BusinessLocationUpdateView.as_view(), name='core-business-location'),
     # Legal Documents (Terms, Privacy Policy, Community Guidelines)
     path('legal/<str:policy_type>/', LegalDocumentView.as_view(), name='core-legal-document'),
+    path('health/', health_view, name='core-health'),
     path('', include(router.urls)),
 ]

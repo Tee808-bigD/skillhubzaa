@@ -46,14 +46,14 @@ class User(AbstractUser):
         blank=True,
         null=True
     )
-    location = models.CharField(_('Location / City'), max-width=150, default='Johannesburg, South Africa')
-    province = models.CharField(_('Province'), max-width=50, choices=PROVINCE_CHOICES, default='Gauteng')
+    location = models.CharField(_('Location / City'), max_length=150, default='Johannesburg, South Africa')
+    province = models.CharField(_('Province'), max_length=50, choices=PROVINCE_CHOICES, default='Gauteng')
     skills = models.JSONField(_('Skills List'), default=list, blank=True)
     is_creator = models.BooleanField(_('Is Content Creator'), default=False)
-    role = models.CharField(_('Role'), max-width=20, choices=ROLE_CHOICES, default='youth')
+    role = models.CharField(_('Role'), max_length=20, choices=ROLE_CHOICES, default='youth')
     seta_verified = models.BooleanField(_('SETA Verified Learner'), default=False)
     verified = models.BooleanField(_('Verified Profile'), default=False)
-    badge = models.CharField(_('Profile Badge'), max-width=100, blank=True, null=True, default='Active Member')
+    badge = models.CharField(_('Profile Badge'), max_length=100, blank=True, null=True, default='Active Member')
     rating = models.DecimalField(_('Professional Rating'), max_digits=3, decimal_places=2, default=5.00)
     hourly_rate = models.DecimalField(_('Hourly Rate in USD'), max_digits=6, decimal_places=2, default=50.00, null=True, blank=True)
     country = models.CharField(_('Country'), max_length=100, default='Global', blank=True)
@@ -62,12 +62,12 @@ class User(AbstractUser):
     terms_accepted_at = models.DateTimeField(_('Terms Accepted At'), null=True, blank=True)
     privacy_policy_accepted_at = models.DateTimeField(_('Privacy Policy Accepted At'), null=True, blank=True)
     marketing_consent = models.BooleanField(_('Marketing Communications Consent'), default=False)
-    policy_version_agreed = models.CharField(_('Policy Version Agreed'), max-width=20, default='1.0')
+    policy_version_agreed = models.CharField(_('Policy Version Agreed'), max_length=20, default='1.0')
 
     # Age Verification & Minor Protection
     date_of_birth = models.DateField(_('Date of Birth'), null=True, blank=True)
     is_minor = models.BooleanField(_('Is Minor Under 18'), default=False)
-    parental_consent_token = models.CharField(_('Parental Consent Token'), max-width=100, blank=True, null=True)
+    parental_consent_token = models.CharField(_('Parental Consent Token'), max_length=100, blank=True, null=True)
 
     # Business Location (For Public Display ONLY if explicitly enabled by user)
     business_name = models.CharField(_('Business / Trade Name'), max_length=200, blank=True)
@@ -100,8 +100,8 @@ class Profile(models.Model):
     Additional Profile metadata linked OneToOne with User.
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    phone = models.CharField(_('Phone Number'), max-width=30, blank=True, default='')
-    education_level = models.CharField(_('Education Level'), max-width=100, default='Matric / Grade 12')
+    phone = models.CharField(_('Phone Number'), max_length=30, blank=True, default='')
+    education_level = models.CharField(_('Education Level'), max_length=100, default='Matric / Grade 12')
     matric_year = models.PositiveIntegerField(_('Matric Completion Year'), null=True, blank=True)
     certificates_count = models.PositiveIntegerField(_('Verified Certificates Count'), default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -123,11 +123,11 @@ class Post(models.Model):
 
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
     content = models.TextField(_('Post Content'))
-    media_type = models.CharField(_('Media Type'), max-width=10, choices=MEDIA_TYPES, default='text')
+    media_type = models.CharField(_('Media Type'), max_length=10, choices=MEDIA_TYPES, default='text')
     media_file = models.ImageField(_('Media Image File'), upload_to='posts/media/', blank=True, null=True)
     video_file = models.FileField(_('Video File'), upload_to='posts/videos/', blank=True, null=True)
-    category = models.CharField(_('Category'), max-width=100, default='General')
-    hashtags = models.CharField(_('Hashtags'), max-width=300, blank=True, default='')
+    category = models.CharField(_('Category'), max_length=100, default='General')
+    hashtags = models.CharField(_('Hashtags'), max_length=300, blank=True, default='')
 
     # Safe Harbor & Content Moderation (ECTA Chapter XI)
     MODERATION_STATUS_CHOICES = [
@@ -137,7 +137,7 @@ class Post(models.Model):
     ]
     moderation_status = models.CharField(
         _('Moderation Status'),
-        max-width=20,
+        max_length=20,
         choices=MODERATION_STATUS_CHOICES,
         default='approved'
     )
@@ -224,14 +224,14 @@ class Event(models.Model):
     """
     Community workshops, masterclasses, and SETA learnership summits.
     """
-    title = models.CharField(_('Event Title'), max-width=255)
+    title = models.CharField(_('Event Title'), max_length=255)
     description = models.TextField(_('Event Description'))
     date = models.DateTimeField(_('Event Date & Time'))
-    date_badge = models.CharField(_('Date Badge (e.g. Aug 25)'), max-width=50, blank=True)
-    location = models.CharField(_('Location / Venue'), max-width=255)
+    date_badge = models.CharField(_('Date Badge (e.g. Aug 25)'), max_length=50, blank=True)
+    location = models.CharField(_('Location / Venue'), max_length=255)
     organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='organized_events')
     image_url = models.URLField(_('Cover Image URL'), blank=True, null=True)
-    category = models.CharField(_('Category'), max-width=80, default='Workshop')
+    category = models.CharField(_('Category'), max_length=80, default='Workshop')
     attendees = models.ManyToManyField(User, related_name='attending_events', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -258,14 +258,14 @@ class Service(models.Model):
         ('day', 'Per Day'),
     ]
 
-    title = models.CharField(_('Service Title'), max-width=255)
+    title = models.CharField(_('Service Title'), max_length=255)
     description = models.TextField(_('Service Description'))
     provider = models.ForeignKey(User, on_delete=models.CASCADE, related_name='services')
-    price = models.DecimalField(_('Price (ZAR)'), max-digits=10, decimal_places=2)
-    price_unit = models.CharField(_('Price Unit'), max-width=15, choices=PRICE_UNIT_CHOICES, default='project')
-    category = models.CharField(_('Category'), max-width=50, choices=SERVICE_CATEGORY_CHOICES, default='web_dev')
+    price = models.DecimalField(_('Price (ZAR)'), max_digits=10, decimal_places=2)
+    price_unit = models.CharField(_('Price Unit'), max_length=15, choices=PRICE_UNIT_CHOICES, default='project')
+    category = models.CharField(_('Category'), max_length=50, choices=SERVICE_CATEGORY_CHOICES, default='web_dev')
     image_url = models.URLField(_('Portfolio Image URL'), blank=True, null=True)
-    phone = models.CharField(_('Contact Phone / WhatsApp'), max-width=30, blank=True)
+    phone = models.CharField(_('Contact Phone / WhatsApp'), max_length=30, blank=True)
     deliverables = models.JSONField(_('Key Deliverables'), default=list, blank=True)
     verified_youth = models.BooleanField(_('Verified Youth Artisan'), default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -295,9 +295,9 @@ class Reel(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reels')
     video_url = models.FileField(_('Reel Video File'), upload_to='reels/videos/', blank=True, null=True)
     caption = models.TextField(_('Reel Caption'), blank=True)
-    audio_track = models.CharField(_('Audio Track'), max-width=150, default='Original Audio - SkillHub Global')
+    audio_track = models.CharField(_('Audio Track'), max_length=150, default='Original Audio - SkillHub Global')
     tags = models.JSONField(_('Tags'), default=list, blank=True)
-    category = models.CharField(_('Category'), max-width=50, choices=REEL_CATEGORY_CHOICES, default='web_dev')
+    category = models.CharField(_('Category'), max_length=50, choices=REEL_CATEGORY_CHOICES, default='web_dev')
     skills = models.JSONField(_('Skills Showcased'), default=list, blank=True)
     is_portfolio_piece = models.BooleanField(_('Is Portfolio Piece'), default=True)
     views_count = models.PositiveIntegerField(_('Views Count'), default=0)
@@ -316,7 +316,7 @@ class ChatRoom(models.Model):
     """
     Real-time chat room / conversation between users for Django Channels.
     """
-    name = models.CharField(_('Room Name / Subject'), max-width=200, blank=True)
+    name = models.CharField(_('Room Name / Subject'), max_length=200, blank=True)
     participants = models.ManyToManyField(User, related_name='chat_rooms')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -384,9 +384,9 @@ class PolicyVersion(models.Model):
         ('community_guidelines', 'Community Guidelines'),
     ]
 
-    policy_type = models.CharField(_('Policy Type'), max-width=30, choices=POLICY_TYPES)
-    version = models.CharField(_('Version Number'), max-width=20, default='1.0')
-    title = models.CharField(_('Title'), max-width=200)
+    policy_type = models.CharField(_('Policy Type'), max_length=30, choices=POLICY_TYPES)
+    version = models.CharField(_('Version Number'), max_length=20, default='1.0')
+    title = models.CharField(_('Title'), max_length=200)
     content = models.TextField(_('Legal Document Content (Markdown/HTML)'))
     effective_date = models.DateField(_('Effective Date'))
     is_active = models.BooleanField(_('Is Current Active Version'), default=True)
@@ -453,11 +453,11 @@ class Report(models.Model):
     ]
 
     reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submitted_reports')
-    content_type = models.CharField(_('Content Type'), max-width=20, choices=CONTENT_TYPES)
-    content_id = models.CharField(_('Reported Content ID'), max-width=100)
-    reason = models.CharField(_('Reason for Report'), max-width=30, choices=REASON_CHOICES)
+    content_type = models.CharField(_('Content Type'), max_length=20, choices=CONTENT_TYPES)
+    content_id = models.CharField(_('Reported Content ID'), max_length=100)
+    reason = models.CharField(_('Reason for Report'), max_length=30, choices=REASON_CHOICES)
     comment = models.TextField(_('Additional Context / Reporter Notes'), blank=True, default='')
-    status = models.CharField(_('Moderation Status'), max-width=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(_('Moderation Status'), max_length=20, choices=STATUS_CHOICES, default='pending')
     admin_notes = models.TextField(_('Internal Moderator Notes'), blank=True, default='')
     action_taken_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='actioned_reports')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -482,14 +482,14 @@ class DMCARequest(models.Model):
         ('rejected', 'Notice Rejected / Insufficient Proof'),
     ]
 
-    complainant_name = models.CharField(_('Full Legal Name of Copyright Owner or Agent'), max-width=200)
+    complainant_name = models.CharField(_('Full Legal Name of Copyright Owner or Agent'), max_length=200)
     complainant_email = models.EmailField(_('Complainant Contact Email'))
     copyrighted_work = models.TextField(_('Identification of Copyrighted Work Claimed to be Infringed'))
     infringing_url = models.URLField(_('URL or Specific Location of Infringing Material'))
     good_faith_statement = models.BooleanField(_('Good Faith Belief Statement'), default=True)
     accuracy_statement = models.BooleanField(_('Penalty of Perjury / Truthfulness Statement'), default=True)
-    electronic_signature = models.CharField(_('Electronic Signature'), max-width=150)
-    status = models.CharField(_('Takedown Status'), max-width=20, choices=STATUS_CHOICES, default='received')
+    electronic_signature = models.CharField(_('Electronic Signature'), max_length=150)
+    status = models.CharField(_('Takedown Status'), max_length=20, choices=STATUS_CHOICES, default='received')
     admin_notes = models.TextField(_('Moderator Actions & Notes'), blank=True, default='')
     received_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

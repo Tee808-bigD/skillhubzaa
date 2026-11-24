@@ -1,8 +1,11 @@
 import json
+import logging
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 from .models import ChatRoom, Message, User
+
+logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -16,10 +19,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.room_group_name = f'chat_{self.room_id}'
         self.user = self.scope.get('user', AnonymousUser())
 
-        # Validate authentication and room membership
+        # 4001 = missing/expired/invalid JWT (client should refresh and retry).
+        # 4003 = authenticated but not a participant of this room (do not retry).
+        if not self.user or not self.user.is_authenticated:
+            reason = self.scope.get('jwt_error') or 'missing'
+            logger.info('WS rejected room=%s reason=%s close=4001', self.room_id, reason)
+            await self.close(code=4001)
+            return
+
         is_allowed = await self.is_user_participant(self.user, self.room_id)
         if not is_allowed:
-            # Reject connection if user is not authenticated or not a participant
+            logger.info('WS rejected room=%s user_id=%s reason=not_participant close=4003', self.room_id, self.user.pk)
             await self.close(code=4003)
             return
 
@@ -30,6 +40,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         )
 
         await self.accept()
+        logger.info('WS connected room=%s user_id=%s', self.room_id, self.user.pk)
 
         # Send connection confirmation to client
         await self.send_json({
@@ -40,6 +51,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         })
 
     async def disconnect(self, close_code):
+        logger.info(
+            'WS disconnected room=%s user_id=%s close=%s',
+            getattr(self, 'room_id', None),
+            getattr(self.user, 'pk', None),
+            close_code,
+        )
         # Leave room group
         if hasattr(self, 'room_group_name'):
             await self.channel_layer.group_discard(
@@ -63,6 +80,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             # Persist message to database asynchronously
             saved_msg = await self.save_message(self.user, self.room_id, text)
+            logger.info('WS message saved id=%s room=%s user_id=%s', saved_msg['id'], self.room_id, self.user.pk)
 
             # Broadcast message to all clients in the room group
             await self.channel_layer.group_send(
@@ -132,6 +150,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             content=content,
             text=content
         )
+        # user.avatar is an ImageFieldFile, which is not JSON-serializable. Send its URL instead.
+        try:
+            avatar_url = user.avatar.url if user.avatar else None
+        except ValueError:
+            avatar_url = None
         return {
             'id': msg.id,
             'content': msg.content,
@@ -140,6 +163,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 'id': user.id,
                 'username': user.username,
                 'full_name': user.get_full_name() or user.username,
-                'avatar': user.avatar,
+                'avatar': avatar_url,
             }
         }
